@@ -8,10 +8,6 @@ USER_TYPE_CHOICES = (
     (USER_TYPE_E, _('Type E')),
 )
 
-CANT_DELETE_USER_ERROR = {
-    "Error": "Failed to delete user, please make sure of the username provided in the url"
-}
-
 SUCCESSFULLY_DELETED_USER = {
     "Success": "The user has successfully been deleted"
 }
@@ -27,3 +23,13 @@ NOT_ALLOWED_TO_ACCESS = {
 SUCCESSFULLY_CREATED_ACTIVITY = {
     "detail": "Activity has been created successfully"
 }
+
+SUCCESSFULLY_DELETED_ACTIVITY = {
+    "detail": "Activity has been deleted successfully"
+}
+LAST_SUPERUSER_DELETION_ERROR = {
+    "detail": "Cannot delete the last admin available."
+}
+
+# Define constants for column headers
+EXPORT_ACTIVITY_COLUMNS = ["Username", "Type", "Date", "Time", "User Activity"]

@@ -13,7 +13,7 @@ class ListUsersSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 class UserDeleteSerializer(serializers.Serializer):
-    username = serializers.CharField()
+    userId = serializers.IntegerField()
 
 class ActivitySerializer(serializers.ModelSerializer):
     username = serializers.SerializerMethodField()
@@ -31,3 +31,9 @@ class ModifyActivitySerializer(serializers.ModelSerializer):
     class Meta:
         model=Activity
         fields = ['userActivity']
+
+class MakeUserAdminSerializer(serializers.ModelSerializer):
+    userId = serializers.IntegerField()
+    class Meta:
+        model=User
+        fields = ['is_superuser', 'userId']
