@@ -8,9 +8,15 @@ class CreateUserSerializer(serializers.ModelSerializer):
         fields = ['username', 'password', 'email', 'phoneNumber', 'first_name', 'last_name', 'userType']
 
 class ListUsersSerializer(serializers.ModelSerializer):
-     class Meta:
+    user_type = serializers.SerializerMethodField()
+    class Meta:
         model = User
-        fields = "__all__"
+        exclude =['password']
+    def get_user_type(self, obj):
+        for user_type, user_type_text in constants.USER_TYPE_CHOICES:
+            if obj.userType == user_type:
+                return user_type_text
+        return _("Unknown User Type")
 
 class UserDeleteSerializer(serializers.Serializer):
     userId = serializers.IntegerField()

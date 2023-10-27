@@ -13,10 +13,6 @@ class User(AbstractUser, TimeStampedModel):
     def __str__(self):
         return f'username: {self.username}'
 
-# class Profile(TimeStampedModel):
-#     firstName = models.CharField(max_length=200)
-#     lastName = models
-
 class Activity(TimeStampedModel):
     userActivity = models.TextField()
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True)

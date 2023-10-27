@@ -74,6 +74,13 @@ class UserViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(users, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+    @action(detail=False, methods=['GET'])
+    def get_user(self, request, *args, **kwargs):
+        userId = request.user.id
+        user = User.objects.filter(id=userId).first()
+        serializer = self.get_serializer(user)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
     @action(detail=False, methods=['PATCH'])
     def make_admin(self, request, *args, **kwargs):
         adminId = request.user.id
