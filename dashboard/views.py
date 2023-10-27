@@ -107,8 +107,8 @@ class UserViewSet(viewsets.ModelViewSet):
         if serializer.is_valid():  # Validate the data
             user_id = serializer.validated_data['userId']
             userObject = User.objects.filter(id=user_id).first()
-            # if not userObject or user_id == adminId:
-            #     return Response(status=status.HTTP_400_BAD_REQUEST)
+            if not userObject:
+                return Response(status=status.HTTP_400_BAD_REQUEST)
              # Check if the user to be deleted is a superuser
             if userObject.is_superuser:
                 superusers_count = User.objects.filter(is_superuser=True).count()
@@ -169,7 +169,7 @@ class ActivityViewSet(viewsets.ModelViewSet):
         else:
             # If no date is provided, default to today's date
             selected_date = date.today()
-        activities = Activity.objects.filter(created__date=selected_date)
+        activities = Activity.objects.filter(created__date=selected_date).order_by('-created')
         serializer = ActivitySerializer(activities, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
