@@ -14,6 +14,7 @@ class ListUsersSerializer(serializers.ModelSerializer):
         exclude =['password']
     def get_user_type(self, obj):
         for user_type, user_type_text in constants.USER_TYPE_CHOICES:
+
             if obj.userType == user_type:
                 return user_type_text
         return _("Unknown User Type")
@@ -24,6 +25,8 @@ class UserDeleteSerializer(serializers.Serializer):
 class ActivitySerializer(serializers.ModelSerializer):
     username = serializers.SerializerMethodField()
     userType = serializers.SerializerMethodField()
+    firstName = serializers.SerializerMethodField()
+    lastName = serializers.SerializerMethodField()
     class Meta:
         model=Activity
         fields="__all__"
@@ -32,6 +35,10 @@ class ActivitySerializer(serializers.ModelSerializer):
         return obj.user.username
     def get_userType(self, obj):
         return constants.USER_TYPE_CHOICES[obj.user.userType][1]
+    def get_firstName(self, obj):
+        return obj.user.first_name
+    def get_lastName(self, obj):
+        return obj.user.last_name
 
 class ModifyActivitySerializer(serializers.ModelSerializer):
     class Meta:
