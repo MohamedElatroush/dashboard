@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from .models import User, Activity
 from .constants import constants
+from gettext import gettext as _
 
 class CreateUserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -13,11 +14,11 @@ class ListUsersSerializer(serializers.ModelSerializer):
         model = User
         exclude =['password']
     def get_user_type(self, obj):
-        for user_type, user_type_text in constants.USER_TYPE_CHOICES:
-
-            if obj.userType == user_type:
+        user_type = obj.userType
+        for user_type_value, user_type_text in constants.USER_TYPE_CHOICES:
+            if user_type == user_type_value:
                 return user_type_text
-        return _("Unknown User Type")
+        return "Unknown User Type"
 
 class UserDeleteSerializer(serializers.Serializer):
     userId = serializers.IntegerField()

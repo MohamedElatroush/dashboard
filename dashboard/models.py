@@ -16,6 +16,6 @@ class User(AbstractUser, TimeStampedModel):
 class Activity(TimeStampedModel):
     userActivity = models.TextField()
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True)
-    
+
     def __str__(self):
         return f'User Activity by: {self.user.username}'

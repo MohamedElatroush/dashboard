@@ -188,9 +188,11 @@ class ActivityViewSet(viewsets.ModelViewSet):
         userId = request.user.id
         activityId = kwargs['activityId']
         activityObj = get_object_or_404(Activity, id=activityId)
+
         # Check if the user accessing the endpoint is the same one that created the activity or not
         if userId != activityObj.user.id:
             return Response(data=constants.NOT_ALLOWED_TO_ACCESS, status=status.HTTP_400_BAD_REQUEST)
+        print('here')
 
         serializer = ModifyActivitySerializer(activityObj, data=request.data, partial=True)
         if serializer.is_valid():

@@ -4,8 +4,8 @@ USER_TYPE_A = 0
 USER_TYPE_E = 1
 
 USER_TYPE_CHOICES = (
-    (USER_TYPE_A, _('Type A')),
-    (USER_TYPE_E, _('Type E')),
+    (USER_TYPE_A, _('Type A: International')),
+    (USER_TYPE_E, _('Type E: Egyptian')),
 )
 
 SUCCESSFULLY_DELETED_USER = {
