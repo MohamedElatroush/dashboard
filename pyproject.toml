@@ -6,7 +6,7 @@ authors = ["M. Hatem"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "3.9"
+python = "^3.9"
 django = "4.2.6"
 drf-yasg = "1.21.7"
 django-rest-swagger = "2.2.0"
