@@ -20,7 +20,6 @@ from openpyxl.styles import Alignment
 from io import BytesIO
 from django.http import HttpResponse
 import pytz 
-from .utilities.utilities import convert_to_cairo_timezone_and_format
 
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     @classmethod
@@ -192,7 +191,6 @@ class ActivityViewSet(viewsets.ModelViewSet):
         # Check if the user accessing the endpoint is the same one that created the activity or not
         if userId != activityObj.user.id:
             return Response(data=constants.NOT_ALLOWED_TO_ACCESS, status=status.HTTP_400_BAD_REQUEST)
-        print('here')
 
         serializer = ModifyActivitySerializer(activityObj, data=request.data, partial=True)
         if serializer.is_valid():
