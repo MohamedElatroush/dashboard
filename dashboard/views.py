@@ -20,7 +20,8 @@ from openpyxl.styles import Alignment
 from io import BytesIO
 from django.http import HttpResponse
 import pytz
-import threading
+import pandas as pd
+from .utilities import utilities
 
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     @classmethod
@@ -114,6 +115,7 @@ class UserViewSet(viewsets.ModelViewSet):
         if serializer.is_valid():  # Validate the data
             user_id = serializer.validated_data['userId']
             userObject = User.objects.filter(id=user_id).first()
+
             if not userObject:
                 return Response(status=status.HTTP_400_BAD_REQUEST)
              # Check if the user to be deleted is a superuser
@@ -148,6 +150,7 @@ class UserViewSet(viewsets.ModelViewSet):
         userObject.save()
         return Response(constants.SUCCESSFULLY_DELETED_USER, status=status.HTTP_200_OK)
 
+
     @action(detail=False, methods=['post'], serializer_class=CreateUserSerializer)
     def excel_sign_up(self, request, *args, **kwargs):
         """
@@ -155,7 +158,76 @@ class UserViewSet(viewsets.ModelViewSet):
         concatenate them to generate a username, and make a default password of 1234 that's required to be changed
         by the user
         """
-        return Response(status=status.HTTP_200_OK)
+        # Check if user is not an admin
+        if not utilities.check_is_admin(request.user.id):
+            return Response(status=status.HTTP_403_FORBIDDEN)
+        # Check if an Excel file was uploaded
+        if 'file' not in request.FILES:
+            return Response({'error': 'No file uploaded'}, status=status.HTTP_400_BAD_REQUEST)
+        excel_file = request.FILES['file']
+        try:
+            all_usernames = set(User.objects.all().values_list('username', flat=True))
+            # Read the Excel file again, this time setting the second row as headers
+            dataframe_with_headers = pd.read_excel(excel_file, header=2)
+
+            # Find the column index for "HR Code" and "Remarks"
+            hr_code_index = dataframe_with_headers.columns.get_loc("HR Code")
+            remarks_index = dataframe_with_headers.columns.get_loc("Remarks") if "Remarks" in dataframe_with_headers.columns else None
+
+            # If "Remarks" column is not found, we will display all columns up to the last one.
+            if remarks_index is None:
+                remarks_index = len(dataframe_with_headers.columns) - 1
+
+            # Display the new column headers and a sample of the data to confirm
+            dataframe_hr_to_remarks = dataframe_with_headers.iloc[:, hr_code_index:remarks_index+1]
+            for index, row in dataframe_hr_to_remarks.iterrows():
+                if pd.isna(row['Name']):
+                    continue
+                # Extract information from the row
+                hr_code = row['HR Code']
+                name = row['Name']
+                email = row['Email Address']
+                grade = row['Grade']
+                organization_code = row['Organization Code']
+                position = row['Position']
+                department = row['Department']
+                nat_group = row['NAT Group']
+                working_location = row['Working Location']
+                expert = row['Expert']
+                mobilization_status = row['Mobilization status']
+
+                # Assuming you have a function to convert the grade and expert to the corresponding integer choices
+                grade_choice = utilities.convert_grade_to_choice(grade)
+                expert_choice = utilities.convert_expert_to_choice(expert)
+                nat_group_choice = utilities.convert_nat_group_to_choice(nat_group)
+
+                email = row['Email Address'] if pd.notnull(row['Email Address']) else None
+                # Create a new User object
+                user = User(
+                    username = utilities.generate_username_from_name(name, all_usernames),  # Assuming the username is the name, you might want to format this.
+                    email=email,
+                    first_name=utilities.generate_first_name(name),
+                    last_name=utilities.generate_last_name(name),
+                    grade=grade_choice,
+                    hrCode=hr_code,  # This will be overridden if grade is set and hrCode is not.
+                    organizationCode=organization_code,
+                    position=position,
+                    department=department,
+                    natGroup=nat_group_choice,
+                    workingLocation=working_location,
+                    expert=expert_choice,
+                    mobilization=mobilization_status,
+                    password=make_password("1234")
+                )
+
+                # Save the new user, the save method will call generate_hr_code if needed
+                user.save()
+
+
+            return Response({'message': 'Data extracted and printed successfully'}, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class ActivityViewSet(viewsets.ModelViewSet):
     permission_classes=(IsAuthenticated,)
@@ -220,7 +292,7 @@ class ActivityViewSet(viewsets.ModelViewSet):
             # Convert the datetime to Cairo timezone and then format it
             created_cairo = activity.created.astimezone(cairo_timezone)
             ws.cell(row=row_num, column=1, value=activity.user.username)
-            ws.cell(row=row_num, column=2, value=str(constants.USER_TYPE_CHOICES[activity.user.userType][1]))
+            # ws.cell(row=row_num, column=2, value=str(constants.USER_TYPE_CHOICES[activity.user.userType][1]))
             ws.cell(row=row_num, column=3, value=created_cairo.strftime("%Y-%m-%d"))
             ws.cell(row=row_num, column=4, value=created_cairo.strftime("%H:%M:%S"))
             ws.cell(row=row_num, column=5, value=activity.userActivity)

@@ -6,26 +6,31 @@ from gettext import gettext as _
 class CreateUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['username', 'password', 'email', 'phoneNumber', 'first_name', 'last_name', 'userType']
+        fields = ['username', 'password', 'email', 'phoneNumber', 'first_name', 'last_name']
 
 class ListUsersSerializer(serializers.ModelSerializer):
-    user_type = serializers.SerializerMethodField()
+    grade = serializers.SerializerMethodField()
+    expert = serializers.SerializerMethodField()
+    natGroup = serializers.SerializerMethodField()
     class Meta:
         model = User
         exclude =['password']
-    def get_user_type(self, obj):
-        user_type = obj.userType
-        for user_type_value, user_type_text in constants.USER_TYPE_CHOICES:
-            if user_type == user_type_value:
-                return user_type_text
-        return "Unknown User Type"
+    
+    def get_grade(self, obj):
+        return obj.get_grade()
+    
+    def get_expert(self,obj):
+        return obj.get_expert()
+    def get_natGroup(self,obj):
+        return obj.get_natGroup()
+
 
 class UserDeleteSerializer(serializers.Serializer):
     userId = serializers.IntegerField()
 
 class ActivitySerializer(serializers.ModelSerializer):
     username = serializers.SerializerMethodField()
-    userType = serializers.SerializerMethodField()
+    # userType = serializers.SerializerMethodField()
     firstName = serializers.SerializerMethodField()
     lastName = serializers.SerializerMethodField()
     class Meta:
@@ -34,8 +39,8 @@ class ActivitySerializer(serializers.ModelSerializer):
     def get_username(self, obj):
         # Access the related User object and retrieve the username
         return obj.user.username
-    def get_userType(self, obj):
-        return constants.USER_TYPE_CHOICES[obj.user.userType][1]
+    # def get_userType(self, obj):
+    #     return constants.USER_TYPE_CHOICES[obj.user.userType][1]
     def get_firstName(self, obj):
         return obj.user.first_name
     def get_lastName(self, obj):
