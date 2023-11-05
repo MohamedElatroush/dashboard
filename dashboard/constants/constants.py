@@ -46,6 +46,18 @@ NAT_GROUP_CHOICES = (
     (RSMD, _('Rolling Stock & Mechanical Department')),
 )
 
+OCG = 0
+NK = 1
+EHAF = 2
+ACE = 3
+
+COMPANY_CHOICES = (
+    (OCG, _('OCG')),
+    (NK, _('NK')),
+    (EHAF, _('EHAF')),
+    (ACE, _('ACE')),
+)
+
 SUCCESSFULLY_DELETED_USER = {
     "Success": "The user has successfully been deleted"
 }

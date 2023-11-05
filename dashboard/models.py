@@ -23,6 +23,7 @@ class User(AbstractUser, TimeStampedModel):
     workingLocation = models.CharField(max_length=256, null=True, blank=True)
     expert = models.IntegerField(choices=constants.EXPERT_LOCAL_CHOICES, null=True, blank=True)
     mobilization = models.CharField(max_length=256, null=True, blank=True)
+    company = models.IntegerField(choices=constants.COMPANY_CHOICES, null=True, blank=True)
 
     def get_grade(self):
         # Create a dict from USER_GRADE_CHOICES for reverse lookup
@@ -37,6 +38,12 @@ class User(AbstractUser, TimeStampedModel):
     def get_natGroup(self):
         nat_dict = dict(constants.NAT_GROUP_CHOICES)
         return nat_dict.get(self.natGroup, None)
+    def get_company(self):
+        company_dict = dict(constants.COMPANY_CHOICES)
+        return company_dict.get(self.company, None)
+    def generate_hr_code(self):
+        print(self.grade)
+        print('\n\n\n')
 
     # def generate_hr_code(self):
     #     if self.grade is not None and (self._state.adding or not self.hrCode):
@@ -54,13 +61,13 @@ class User(AbstractUser, TimeStampedModel):
     #         grade_prefix = constants.USER_GRADE_CHOICES[self.grade][1]
     #         self.hrCode = f'{grade_prefix}{next_numerical_part:03d}'
 
-    # def save(self, *args, **kwargs):
-    #     # if not self.pk: # New user
-    #     if self.grade is None:
-    #         self.hrCode = None
-    #     else:
-    #         self.generate_hr_code()
-    #     super().save(*args, **kwargs)
+    def save(self, *args, **kwargs):
+        # if not self.pk: # New user
+        if self.grade is None:
+            self.hrCode = None
+        else:
+            self.generate_hr_code()
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f'username: {self.username}'
@@ -71,8 +78,3 @@ class Activity(TimeStampedModel):
 
     def __str__(self):
         return f'User Activity by: {self.user.username}'
-
-# Signal to handle user deletion
-# @receiver(post_delete, sender=User)
-# def user_deleted(sender, instance, **kwargs):
-#     format_hr_codes(instance.grade)
