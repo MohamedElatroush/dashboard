@@ -195,11 +195,13 @@ class UserViewSet(viewsets.ModelViewSet):
                 working_location = row['Working Location']
                 expert = row['Expert']
                 mobilization_status = row['Mobilization status']
+                company = row['Company']
 
                 # Assuming you have a function to convert the grade and expert to the corresponding integer choices
                 grade_choice = utilities.convert_grade_to_choice(grade)
                 expert_choice = utilities.convert_expert_to_choice(expert)
                 nat_group_choice = utilities.convert_nat_group_to_choice(nat_group)
+                company_choice = utilities.convert_company_to_choice(company)
 
                 email = row['Email Address'] if pd.notnull(row['Email Address']) else None
                 # Create a new User object
@@ -216,6 +218,7 @@ class UserViewSet(viewsets.ModelViewSet):
                     natGroup=nat_group_choice,
                     workingLocation=working_location,
                     expert=expert_choice,
+                    company=company_choice,
                     mobilization=mobilization_status,
                     password=make_password("1234")
                 )

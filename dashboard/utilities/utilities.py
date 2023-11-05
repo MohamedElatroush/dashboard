@@ -65,6 +65,15 @@ def convert_nat_group_to_choice(nat_group_string):
     }
     return nat_group_mappings.get(nat_group_string, None)
 
+def convert_company_to_choice(company_string):
+    company_mappings = {
+        'OCG': constants.OCG,
+        'NK': constants.NK,
+        'EHAF': constants.EHAF,
+        'ACE': constants.ACE
+    }
+    return company_mappings.get(company_string, None)
+
 def generate_username_from_name(name, taken_usernames):
     # Split the name and create a base username
     name_parts = name.split()
