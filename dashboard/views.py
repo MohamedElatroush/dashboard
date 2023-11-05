@@ -71,7 +71,7 @@ class UserViewSet(viewsets.ModelViewSet):
         # if not super user dont show users
         if not user.is_superuser:
             return Response(status=status.HTTP_403_FORBIDDEN)
-        users = User.objects.all()
+        users = User.objects.all().order_by('hrCode')
         serializer = self.get_serializer(users, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
