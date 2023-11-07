@@ -57,6 +57,7 @@ class User(AbstractUser, TimeStampedModel):
         # if not self.pk: # New user
         if self.grade is None:
             self.hrCode = None
+            self.expert = None
         else:
             if self.grade in [constants.GRADE_A_1, constants.GRADE_A_2, constants.GRADE_A_3]:
                 self.expert = constants.EXPERT_USER
