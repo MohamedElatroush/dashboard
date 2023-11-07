@@ -41,31 +41,27 @@ class User(AbstractUser, TimeStampedModel):
     def get_company(self):
         company_dict = dict(constants.COMPANY_CHOICES)
         return company_dict.get(self.company, None)
-    def generate_hr_code(self):
-        print(self.grade)
-        print('\n\n\n')
 
-    # def generate_hr_code(self):
-    #     if self.grade is not None and (self._state.adding or not self.hrCode):
-    #         # Find the maximum count for the given grade
-    #         max_count = User.objects.filter(grade=self.grade).aggregate(max_count=models.Max(models.F('hrCode')))
-    #         max_count = max_count['max_count']
-    #         if max_count:
-    #             # Extract the numerical part and increment it
-    #             numerical_part = int(max_count[2:])  # Assuming the format is "A2xxx" or similar
-    #             next_numerical_part = numerical_part + 1
-    #         else:
-    #             # If no existing user with this grade, start with 1
-    #             next_numerical_part = 1
-    #         # Construct the new HR code
-    #         grade_prefix = constants.USER_GRADE_CHOICES[self.grade][1]
-    #         self.hrCode = f'{grade_prefix}{next_numerical_part:03d}'
+    def generate_hr_code(self):
+        grade_value = constants.USER_GRADE_CHOICES[self.grade][1]
+        grade_prefix = grade_value[:2]
+        max_hr_code = User.objects.filter(hrCode__startswith=grade_prefix).order_by('-hrCode').first()
+        if max_hr_code:
+            numerical_part = int(max_hr_code.hrCode[len(grade_prefix):]) + 1
+        else:
+            numerical_part = 1
+        self.hrCode = f'{grade_prefix}{numerical_part:03d}'
+
 
     def save(self, *args, **kwargs):
         # if not self.pk: # New user
         if self.grade is None:
             self.hrCode = None
         else:
+            if self.grade in [constants.GRADE_A_1, constants.GRADE_A_2, constants.GRADE_A_3]:
+                self.expert = constants.EXPERT_USER
+            elif self.grade in [constants.GRADE_B_1, constants.GRADE_B_2, constants.GRADE_B_3, constants.GRADE_B_4, constants.GRADE_B_5]:
+                self.expert = constants.LOCAL_USER
             self.generate_hr_code()
         super().save(*args, **kwargs)
 

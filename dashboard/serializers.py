@@ -7,7 +7,7 @@ class CreateUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['username', 'password', 'email', 'phoneNumber', 'first_name', 'last_name', 'grade', 'organizationCode',\
-                   'position', 'department', 'natGroup', 'workingLocation', 'expert', 'mobilization', 'company']
+                   'position', 'department', 'natGroup', 'workingLocation', 'mobilization', 'company']
 
 class ListUsersSerializer(serializers.ModelSerializer):
     grade = serializers.SerializerMethodField()

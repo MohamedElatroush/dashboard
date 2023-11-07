@@ -3,11 +3,11 @@ from django.utils.translation import gettext_lazy as _
 GRADE_A_1 = 0
 GRADE_A_2 = 1
 GRADE_A_3 = 2
-GRADE_B_1 = 5
-GRADE_B_2 = 6
-GRADE_B_3 = 7
-GRADE_B_4 = 8
-GRADE_B_5 = 9
+GRADE_B_1 = 3
+GRADE_B_2 = 4
+GRADE_B_3 = 5
+GRADE_B_4 = 6
+GRADE_B_5 = 7
 
 
 USER_GRADE_CHOICES = (
