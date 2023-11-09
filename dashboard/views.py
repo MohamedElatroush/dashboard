@@ -283,7 +283,6 @@ class ActivityViewSet(viewsets.ModelViewSet):
         current_year = current_date.year
         font = Font(size=8)
         dateFont = Font(size=16)
-        data_rows = []
 
         # Create a Border object for cell borders
         thin_border = Border(top=Side(style='thin'), 
@@ -308,7 +307,7 @@ class ActivityViewSet(viewsets.ModelViewSet):
         # Create a new Excel workbook and add a worksheet
         wb = Workbook()
         ws = wb.active
-        ws.title = "Activity Report"
+        ws.title = "TS"
 
         # Write the month and year headers at the top
         ws.cell(row=1, column=1, value=current_month_name + " " + str(current_year))
@@ -387,7 +386,7 @@ class ActivityViewSet(viewsets.ModelViewSet):
             This endpoint allows the user to create an activity
         """
         userId = request.user.id
-        today = timezone.now().date()
+        today = datetime.now().date()
         # Check if the user has already logged an activity today
         existing_activity = Activity.objects.filter(user__id=userId, created__date=today).first()
 

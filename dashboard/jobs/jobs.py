@@ -4,7 +4,8 @@ from datetime import datetime
 
 def schedule():
     today = timezone.now().date()
-    last_month = today - timezone.timedelta(days=today.day)  # Calculate the first day of the last month
-    last_month_start = datetime.combine(last_month, datetime.min.time())
-    last_month_end = datetime.combine(today, datetime.min.time())
-    Activity.objects.filter(created__gte=last_month_start, created__lt=last_month_end).exclude(created=today).delete()
+    eight_months_ago = today - timezone.timedelta(days=8 * 30)
+     # Filter activities created more than 8 months ago
+    old_activities = Activity.objects.filter(created__lt=eight_months_ago)
+    # Delete the selected activities
+    old_activities.delete()

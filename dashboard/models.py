@@ -77,20 +77,10 @@ class Activity(TimeStampedModel):
     userActivity = models.TextField(null=True, blank=True)
     activityType = models.IntegerField(choices=constants.ACTIVITY_TYPES_CHOICES, blank=False, null=False, default=constants.INOFFICE)
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True)
-
+    created = models.DateTimeField(default=timezone.now)
+    
     def get_activity_type(self):
         return constants.ACTIVITY_TYPES_CHOICES[self.activityType][1]
-
-    def save(self, *args, **kwargs):
-        current_date = datetime.now().date()
-        # Check for existing records with the same user and date
-        existing_records = Activity.objects.filter(user=self.user, created__date=current_date)
-
-        # If an existing record is found, raise an exception
-        if existing_records.exists():
-            raise Exception("A record for this user on this date already exists.")
-
-        super().save(*args, **kwargs)
 
     def __str__(self):
         return f'User Activity by: {self.user.username} -- Date: {self.created.date()}'
