@@ -82,4 +82,16 @@ LAST_SUPERUSER_DELETION_ERROR = {
 }
 
 # Define constants for column headers
-EXPORT_ACTIVITY_COLUMNS = ["Username", "Type", "Date", "Time", "User Activity"]
+EXPORT_ACTIVITY_COLUMNS = ["#", "Name", "Source", "Position", "/", "Grade", "Group"]
+
+HOLIDAY = 0 
+INOFFICE = 1
+OFFDAY = 2
+HOMEASSIGN = 3
+
+ACTIVITY_TYPES_CHOICES = (
+    (HOLIDAY, _('H')),
+    (INOFFICE, _('C')),
+    (OFFDAY, _('X')),
+    (HOMEASSIGN, _('J')),
+)

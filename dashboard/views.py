@@ -13,7 +13,7 @@ from rest_framework.authtoken.models import Token
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.tokens import default_token_generator
-from datetime import date, datetime 
+from datetime import date, datetime, timedelta
 from openpyxl import Workbook
 from openpyxl.utils import get_column_letter
 from openpyxl.styles import Alignment
@@ -22,6 +22,8 @@ from django.http import HttpResponse
 import pytz
 import pandas as pd
 from .utilities import utilities
+from django.utils import timezone
+from openpyxl.styles import Font, PatternFill, Border, Side
 
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     @classmethod
@@ -275,36 +277,96 @@ class ActivityViewSet(viewsets.ModelViewSet):
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    def _create_activity_excel_report(self, activities, selected_date, cairo_timezone):
+    def _create_activity_excel_report(self, users, selected_date):
+        current_date = datetime.now()
+        current_month = current_date.month
+        current_year = current_date.year
+        font = Font(size=8)
+        dateFont = Font(size=16)
+        data_rows = []
+
+        # Create a Border object for cell borders
+        thin_border = Border(top=Side(style='thin'), 
+                            bottom=Side(style='thin'),
+                            left=Side(style='medium'),  # Make the left border thick
+                            right=Side(style='medium'),)
+
+        # Create a fill (background color) for the headers
+        yellow_fill = PatternFill(start_color="FFFF00", end_color="FFFF00", fill_type="solid")
+
+        # Get the current month and year
+        current_month_name = current_date.strftime("%B")
+        current_year = current_date.year
+
+        last_day_of_month = (current_date.replace(day=1, month=current_month % 12 + 1, year=current_year) - timedelta(days=1)).day
+        day_headers = [str(day) for day in range(1, last_day_of_month + 1)]
+
+        constants.EXPORT_ACTIVITY_COLUMNS += day_headers
+        addition_headers = ["Dep NAT", "Invoiced"]
+        constants.EXPORT_ACTIVITY_COLUMNS += addition_headers
+
         # Create a new Excel workbook and add a worksheet
         wb = Workbook()
         ws = wb.active
         ws.title = "Activity Report"
 
-        # Write column headers from the constants
-        for col_num, column_title in enumerate(constants.EXPORT_ACTIVITY_COLUMNS, 1):
-            cell = ws.cell(row=1, column=col_num)
-            cell.value = column_title
-            cell.alignment = Alignment(horizontal="center")
+        # Write the month and year headers at the top
+        ws.cell(row=1, column=1, value=current_month_name + " " + str(current_year))
+        ws.cell(row=1, column=1).font = dateFont  # Apply the font settings
+        ws.cell(row=1, column=1).fill = yellow_fill
 
         # Create a mapping dictionary for user types
-        user_type_mapping = {user_type[0]: user_type[1] for user_type in constants.USER_TYPE_CHOICES}
+        for col_num, column_title in enumerate(constants.EXPORT_ACTIVITY_COLUMNS, 1):
+            cell = ws.cell(row=2, column=col_num)
+            cell.value = column_title
+            cell.alignment = Alignment(horizontal="center")
+            cell.font = font if column_title.isnumeric() else None
 
-        # Populate the worksheet with activity data
-        for row_num, activity in enumerate(activities, 2):
-            # Convert the datetime to Cairo timezone and then format it
-            created_cairo = activity.created.astimezone(cairo_timezone)
-            ws.cell(row=row_num, column=1, value=activity.user.username)
-            # ws.cell(row=row_num, column=2, value=str(constants.USER_TYPE_CHOICES[activity.user.userType][1]))
-            ws.cell(row=row_num, column=3, value=created_cairo.strftime("%Y-%m-%d"))
-            ws.cell(row=row_num, column=4, value=created_cairo.strftime("%H:%M:%S"))
-            ws.cell(row=row_num, column=5, value=activity.userActivity)
+        for row_num, user in enumerate(users, 4):
+            ws.cell(row=row_num, column=1, value=row_num - 3).font = font  # Add userCounter
+            ws.cell(row=row_num, column=2, value=user.get_full_name()).font = Font(size=8, bold=True)
+            ws.cell(row=row_num, column=3, value=str(user.get_company())).font = font
+            ws.cell(row=row_num, column=4, value=str(user.position)).font = font
+            ws.cell(row=row_num, column=5, value=str(user.get_expert())).font = font
+            ws.cell(row=row_num, column=6, value=str(user.get_grade())).font = font
+            for col, day in enumerate(range(1, last_day_of_month + 1), start=8):
+                activities_for_user_and_day = Activity.objects.filter(user=user, created__day=day)
+                activity_types = ", ".join(activity.get_activityType_display() for activity in activities_for_user_and_day if activity.activityType is not None)
+                ws.cell(row=row_num, column=col, value=activity_types).font = font
+                if "C" in activity_types:
+                    green_fill = PatternFill(start_color="A8D08D", end_color="A8D08D", fill_type="solid")
+                    ws.cell(row=row_num, column=col).fill = green_fill
+                if "X" in activity_types:
+                    red_fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
+                    ws.cell(row=row_num, column=col).fill = red_fill
+                if "H" in activity_types:
+                    grey_fill = PatternFill(start_color="A6A6A6", end_color="A6A6A6", fill_type="solid")
+                    ws.cell(row=row_num, column=col).fill = grey_fill
+                if "J" in activity_types:
+                    pink_fill = PatternFill(start_color="FCE4D6", end_color="FCE4D6", fill_type="solid")
+                    ws.cell(row=row_num, column=col).fill = pink_fill
+                # Set horizontal alignment to "center"
+                cell.alignment = Alignment(horizontal="center")
+            col = 8 + last_day_of_month
+            ws.cell(row=row_num, column=col, value=str(user.get_natGroup())).font = font
+            col += 1
+            ws.cell(row=row_num, column=col, value="X").font = font
 
+            for cell in ws[row_num]:
+                cell.border = thin_border
+             # Freeze the top row containing day headers
+        ws.freeze_panes = ws.cell(row=4, column=8)
+
+        for col_idx in range(8, 8 + last_day_of_month):
+            column_letter = get_column_letter(col_idx)
+            ws.column_dimensions[column_letter].width = 3
+
+        # ws.column_dimensions[column[0].column_letter].width = 10
         excel_data = BytesIO()
         wb.save(excel_data)
         excel_data.seek(0)
         response = HttpResponse(excel_data, content_type="application/ms-excel")
-        response["Content-Disposition"] = f'attachment; filename=activity_report_{selected_date}.xlsx'
+        response["Content-Disposition"] = f'attachment; filename=activity_report_{current_month_name}_{current_year}.xlsx'
         return response
 
     @action(detail=False, methods=['GET'])
@@ -314,10 +376,9 @@ class ActivityViewSet(viewsets.ModelViewSet):
         if not userObj.is_superuser:
             return Response(constants.NOT_ALLOWED_TO_ACCESS, status=status.HTTP_400_BAD_REQUEST)
         selected_date = date.today()
-        cairo_timezone = pytz.timezone('Africa/Cairo')
-        activities = Activity.objects.filter(created__date=selected_date).order_by('-created')
+        users = User.objects.all()
 
-        response = self._create_activity_excel_report(activities, selected_date, cairo_timezone)
+        response = self._create_activity_excel_report(users, selected_date)
         return response
 
     @action(detail=False, methods=['POST'])
@@ -326,13 +387,22 @@ class ActivityViewSet(viewsets.ModelViewSet):
             This endpoint allows the user to create an activity
         """
         userId = request.user.id
+        today = timezone.now().date()
+        # Check if the user has already logged an activity today
+        existing_activity = Activity.objects.filter(user__id=userId, created__date=today).first()
+
+        if existing_activity:
+            return Response({"error": "You have already logged an activity for today."}, status=status.HTTP_400_BAD_REQUEST)
         serializer = ModifyActivitySerializer(data=request.data)
         serializer.is_valid()
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        userActivity = serializer.validated_data['userActivity']
-        new_activity = Activity.objects.create(userActivity=userActivity, user_id=userId)
+        userActivity = serializer.validated_data.get('userActivity', None)
+        activityType = serializer.validated_data.get('activityType', None)
+        new_activity = Activity.objects.create(userActivity=userActivity,\
+                                                activityType=activityType,\
+                                                user_id=userId)
         new_activity.save()
         return Response(constants.SUCCESSFULLY_CREATED_ACTIVITY, status=status.HTTP_201_CREATED)
 

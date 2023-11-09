@@ -32,9 +32,10 @@ class UserDeleteSerializer(serializers.Serializer):
 
 class ActivitySerializer(serializers.ModelSerializer):
     username = serializers.SerializerMethodField()
-    # userType = serializers.SerializerMethodField()
+    hrCode = serializers.SerializerMethodField()
     firstName = serializers.SerializerMethodField()
     lastName = serializers.SerializerMethodField()
+    activityType = serializers.SerializerMethodField()
     class Meta:
         model=Activity
         fields="__all__"
@@ -47,11 +48,18 @@ class ActivitySerializer(serializers.ModelSerializer):
         return obj.user.first_name
     def get_lastName(self, obj):
         return obj.user.last_name
+    def get_hrCode(self, obj):
+        return obj.user.hrCode
+    def get_activityType(self, obj):
+        activity_type = obj.activityType
+        if activity_type is not None:
+            return constants.ACTIVITY_TYPES_CHOICES[activity_type][1]
+        return None
 
 class ModifyActivitySerializer(serializers.ModelSerializer):
     class Meta:
         model=Activity
-        fields = ['userActivity']
+        fields = ['userActivity', 'activityType']
 
 class MakeUserAdminSerializer(serializers.ModelSerializer):
     userId = serializers.IntegerField()

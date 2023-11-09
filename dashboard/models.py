@@ -5,7 +5,8 @@ from django.contrib.auth.models import AbstractUser
 from .constants import constants
 from django.db.models.signals import post_delete
 from django.dispatch import receiver
-from .utilities.utilities import format_hr_codes
+from django.utils import timezone
+from datetime import datetime
 
 # Create your models here.
 class User(AbstractUser, TimeStampedModel):
@@ -51,6 +52,9 @@ class User(AbstractUser, TimeStampedModel):
         else:
             numerical_part = 1
         self.hrCode = f'{grade_prefix}{numerical_part:03d}'
+    
+    def get_full_name(self):
+        return self.first_name + " " + self.last_name
 
 
     def save(self, *args, **kwargs):
@@ -70,8 +74,23 @@ class User(AbstractUser, TimeStampedModel):
         return f'username: {self.username}'
 
 class Activity(TimeStampedModel):
-    userActivity = models.TextField()
+    userActivity = models.TextField(null=True, blank=True)
+    activityType = models.IntegerField(choices=constants.ACTIVITY_TYPES_CHOICES, blank=False, null=False, default=constants.INOFFICE)
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True)
 
+    def get_activity_type(self):
+        return constants.ACTIVITY_TYPES_CHOICES[self.activityType][1]
+
+    def save(self, *args, **kwargs):
+        current_date = datetime.now().date()
+        # Check for existing records with the same user and date
+        existing_records = Activity.objects.filter(user=self.user, created__date=current_date)
+
+        # If an existing record is found, raise an exception
+        if existing_records.exists():
+            raise Exception("A record for this user on this date already exists.")
+
+        super().save(*args, **kwargs)
+
     def __str__(self):
-        return f'User Activity by: {self.user.username}'
+        return f'User Activity by: {self.user.username} -- Date: {self.created.date()}'
