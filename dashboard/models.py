@@ -9,11 +9,6 @@ from django.utils import timezone
 from datetime import datetime
 
 # Create your models here.
-class Company(TimeStampedModel):
-    company_name = models.CharField(max_length=256, unique=True)
-
-    def __str__(self):
-        return self.company_name
 class User(AbstractUser, TimeStampedModel):
     id = models.AutoField(primary_key=True)
     phoneNumber = PhoneNumberField(blank=True, null=True)
@@ -29,8 +24,8 @@ class User(AbstractUser, TimeStampedModel):
     workingLocation = models.CharField(max_length=256, null=True, blank=True)
     expert = models.IntegerField(choices=constants.EXPERT_LOCAL_CHOICES, null=True, blank=True)
     mobilization = models.CharField(max_length=256, null=True, blank=True)
-    # company = models.IntegerField(choices=constants.COMPANY_CHOICES, null=True, blank=True)
-    company = models.ForeignKey(Company, on_delete=models.SET_NULL, null=True, blank=True)
+    company = models.IntegerField(choices=constants.COMPANY_CHOICES, null=True, blank=True)
+    needsPasswordReset = models.BooleanField(default=True)
 
     def get_grade(self):
         # Create a dict from USER_GRADE_CHOICES for reverse lookup
@@ -45,9 +40,9 @@ class User(AbstractUser, TimeStampedModel):
     def get_natGroup(self):
         nat_dict = dict(constants.NAT_GROUP_CHOICES)
         return nat_dict.get(self.natGroup, None)
-    # def get_company(self):
-    #     company_dict = dict(constants.COMPANY_CHOICES)
-    #     return company_dict.get(self.company, None)
+    def get_company(self):
+        company_dict = dict(constants.COMPANY_CHOICES)
+        return company_dict.get(self.company, None)
 
     def generate_hr_code(self):
         grade_value = constants.USER_GRADE_CHOICES[self.grade][1]
@@ -58,12 +53,9 @@ class User(AbstractUser, TimeStampedModel):
         else:
             numerical_part = 1
         self.hrCode = f'{grade_prefix}{numerical_part:03d}'
-
     def get_full_name(self):
         return self.first_name + " " + self.last_name
 
-    def get_company(self):
-        return self.company.company_name if self.company else None
 
     def save(self, *args, **kwargs):
         # if not self.pk: # New user

@@ -70,6 +70,10 @@ NOT_ALLOWED_TO_ACCESS = {
     "detail": "You are not allowed to access that!"
 }
 
+SUCCESSFULLY_CHANGED_PASSWORD = {
+    "detail": "Password has been created successfully"
+}
+
 SUCCESSFULLY_CREATED_ACTIVITY = {
     "detail": "Activity has been created successfully"
 }
@@ -95,3 +99,7 @@ ACTIVITY_TYPES_CHOICES = (
     (OFFDAY, _('X')),
     (HOMEASSIGN, _('J')),
 )
+
+ERR_PASSWORD_RESET_NEEDED = {
+    "detail": "Please reset your password first before performing that action"
+}

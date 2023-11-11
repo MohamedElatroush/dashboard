@@ -2,7 +2,7 @@ from .models import User, Activity
 from rest_framework.response import Response
 from rest_framework import permissions, status
 from .serializers import CreateUserSerializer, ListUsersSerializer, UserDeleteSerializer,\
-      ActivitySerializer,ModifyActivitySerializer, MakeUserAdminSerializer
+      ActivitySerializer,ModifyActivitySerializer, MakeUserAdminSerializer, ChangePasswordSerializer
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -25,6 +25,8 @@ from .utilities import utilities
 from django.utils import timezone
 from openpyxl.styles import Font, PatternFill, Border, Side
 from django.db import transaction
+from django.core.mail import send_mail
+from django.conf import settings
 
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     @classmethod
@@ -168,6 +170,7 @@ class UserViewSet(viewsets.ModelViewSet):
         if 'file' not in request.FILES:
             return Response({'error': 'No file uploaded'}, status=status.HTTP_400_BAD_REQUEST)
         excel_file = request.FILES['file']
+
         try:
             all_usernames = set(User.objects.all().values_list('username', flat=True))
             # Read the Excel file again, this time setting the second row as headers
@@ -207,6 +210,10 @@ class UserViewSet(viewsets.ModelViewSet):
                 company_choice = utilities.convert_company_to_choice(company)
 
                 email = row['Email Address'] if pd.notnull(row['Email Address']) else None
+                new_username = utilities.generate_username_from_name(name, all_usernames)
+                if User.objects.filter(username=new_username).exists() or User.objects.filter(email=email).exists():
+                    # Skip this row if the username already exists
+                    continue
                 # Create a new User object
                 user = User(
                     username = utilities.generate_username_from_name(name, all_usernames),  # Assuming the username is the name, you might want to format this.
@@ -231,6 +238,21 @@ class UserViewSet(viewsets.ModelViewSet):
             return Response({'message': 'Data extracted and printed successfully'}, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=False, methods=['PATCH'], url_path=r'change_password/(?P<userId>\w+(?:-\w+)*)')
+    def change_password(self, request, *args, **kwargs):
+        request_user_id = request.user.id
+        target_user_id = kwargs['userId']
+        # Check if the user accessing the endpoint is the same one that created the activity or not
+        if str(request_user_id) != str(target_user_id):
+            return Response(data=constants.NOT_ALLOWED_TO_ACCESS, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer = ChangePasswordSerializer(data=request.data)
+        if serializer.is_valid():
+            User.objects.filter(id=target_user_id).update(needsPasswordReset=False,\
+                                                          password=make_password(serializer.validated_data['password']))
+            return Response(data=constants.SUCCESSFULLY_CHANGED_PASSWORD, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class ActivityViewSet(viewsets.ModelViewSet):
     permission_classes=(IsAuthenticated,)
@@ -394,11 +416,16 @@ class ActivityViewSet(viewsets.ModelViewSet):
         """
         userId = request.user.id
         today = datetime.now().date()
+
+        if User.objects.filter(id=userId).first().needsPasswordReset:
+            return Response(constants.ERR_PASSWORD_RESET_NEEDED, status=status.HTTP_400_BAD_REQUEST)
+
         # Check if the user has already logged an activity today
         existing_activity = Activity.objects.filter(user__id=userId, created__date=today).first()
 
         if existing_activity:
             return Response({"error": "You have already logged an activity for today."}, status=status.HTTP_400_BAD_REQUEST)
+
         serializer = ModifyActivitySerializer(data=request.data)
         serializer.is_valid()
         if not serializer.is_valid():
