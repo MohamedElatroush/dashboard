@@ -24,6 +24,7 @@ import pandas as pd
 from .utilities import utilities
 from django.utils import timezone
 from openpyxl.styles import Font, PatternFill, Border, Side
+from django.db import transaction
 
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     @classmethod
@@ -152,7 +153,7 @@ class UserViewSet(viewsets.ModelViewSet):
         userObject.save()
         return Response(constants.SUCCESSFULLY_DELETED_USER, status=status.HTTP_200_OK)
 
-
+    @transaction.atomic
     @action(detail=False, methods=['post'], serializer_class=CreateUserSerializer)
     def excel_sign_up(self, request, *args, **kwargs):
         """
@@ -227,12 +228,9 @@ class UserViewSet(viewsets.ModelViewSet):
 
                 # Save the new user, the save method will call generate_hr_code if needed
                 user.save()
-
-
             return Response({'message': 'Data extracted and printed successfully'}, status=status.HTTP_200_OK)
-
         except Exception as e:
-            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 class ActivityViewSet(viewsets.ModelViewSet):
     permission_classes=(IsAuthenticated,)
@@ -374,9 +372,18 @@ class ActivityViewSet(viewsets.ModelViewSet):
         userObj = User.objects.filter(id=adminId).first()
         if not userObj.is_superuser:
             return Response(constants.NOT_ALLOWED_TO_ACCESS, status=status.HTTP_400_BAD_REQUEST)
-        selected_date = date.today()
-        users = User.objects.all()
 
+        # Get the date parameter from the query parameters
+        date_param = request.query_params.get('date', None)
+
+        if date_param:
+            try:
+                selected_date = datetime.strptime(date_param, '%Y-%m-%d').date()
+            except ValueError:
+                return Response({'error': 'Invalid date format. Please use YYYY-MM-DD format.'}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            selected_date = date.today()
+        users = User.objects.all()
         response = self._create_activity_excel_report(users, selected_date)
         return response
 
