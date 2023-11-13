@@ -54,16 +54,22 @@ def convert_expert_to_choice(expert_string):
     }
     return expert_mappings.get(expert_string, None)
 
-def convert_nat_group_to_choice(nat_group_string):
-    nat_group_mappings = {
-        'VCH': constants.VCH,
-        'FUD': constants.FUD,
-        'TD': constants.TD,
-        'CWD': constants.CWD,
-        'PSD': constants.PSD,
-        'RSMD': constants.RSMD
-    }
-    return nat_group_mappings.get(nat_group_string, None)
+def convert_nat_group_to_choice(nat_group_value):
+    if isinstance(nat_group_value, str):
+        nat_group_string = nat_group_value.strip().upper()
+        nat_group_mappings = {
+            'VCH': constants.VCH,
+            'FUD': constants.FUD,
+            'TD': constants.TD,
+            'CWD': constants.CWD,
+            'PSD': constants.PSD,
+            'RSMD': constants.RSMD
+        }
+        return nat_group_mappings.get(nat_group_string, None)
+    elif isinstance(nat_group_value, int):
+        return nat_group_value
+    else:
+        return None  # Handle other cases if needed
 
 def convert_company_to_choice(company_string):
     company_mappings = {

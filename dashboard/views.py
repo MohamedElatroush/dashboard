@@ -22,6 +22,8 @@ import pandas as pd
 from .utilities import utilities
 from openpyxl.styles import Font, PatternFill, Border, Side
 from django.db import transaction
+from openpyxl.drawing.image import Image
+import os
 
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     @classmethod
@@ -192,7 +194,7 @@ class UserViewSet(viewsets.ModelViewSet):
                 organization_code = row['Organization Code']
                 position = row['Position']
                 department = row['Department']
-                nat_group = row['NAT Group']
+                nat_group = int(row['NAT Group'])
                 working_location = row['Working Location']
                 expert = row['Expert']
                 mobilization_status = row['Mobilization status']
@@ -274,29 +276,8 @@ class ActivityViewSet(viewsets.ModelViewSet):
             activities = Activity.objects.all().order_by('-created')
         else:
             activities = Activity.objects.filter(user_id=requestId).order_by('-created')
-            print(activities)
         serializer = ActivitySerializer(activities, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
-
-    # @action(detail=False, methods=['PATCH', 'PUT'], serializer_class=ModifyActivitySerializer, url_path=r'update_activity/(?P<activityId>\w+(?:-\w+)*)')
-    # def update_activity(self, request, *args, **kwargs):
-    #     """
-    #         This endpoint allows the user owner of an activity to edit it
-    #     """
-    #     userId = request.user.id
-    #     activityId = kwargs['activityId']
-    #     activityObj = get_object_or_404(Activity, id=activityId)
-
-    #     # Check if the user accessing the endpoint is the same one that created the activity or not
-    #     if userId != activityObj.user.id:
-    #         return Response(data=constants.NOT_ALLOWED_TO_ACCESS, status=status.HTTP_400_BAD_REQUEST)
-
-    #     serializer = ModifyActivitySerializer(activityObj, data=request.data, partial=True)
-    #     if serializer.is_valid():
-    #         serializer.save()
-    #         return Response(data=constants.SUCCESSFULLY_UPDATED_ACTIVITY, status=status.HTTP_200_OK)
-
-    #     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def _create_activity_excel_report(self, users, selected_date):
         current_date = datetime.now()
@@ -306,7 +287,7 @@ class ActivityViewSet(viewsets.ModelViewSet):
         dateFont = Font(size=16)
 
         # Create a Border object for cell borders
-        thin_border = Border(top=Side(style='thin'), 
+        thin_border = Border(top=Side(style='thin'),
                             bottom=Side(style='thin'),
                             left=Side(style='medium'),  # Make the left border thick
                             right=Side(style='medium'),)
@@ -381,13 +362,64 @@ class ActivityViewSet(viewsets.ModelViewSet):
             column_letter = get_column_letter(col_idx)
             ws.column_dimensions[column_letter].width = 3
 
-        # ws.column_dimensions[column[0].column_letter].width = 10
+        # Create sheets for each Dep NAT
+        dep_nats = list(set(user.get_natGroup() for user in users if user.get_natGroup() is not None))
+        for dep_nat in dep_nats:
+            if dep_nat is not None:
+                sheet = wb.create_sheet(title=str(dep_nat))  # Create a new sheet for each Dep NAT
+                sheet.sheet_properties.tabColor = "FFA500"
+                self.__customize_sheet__(sheet, dep_nat, selected_date)
+
         excel_data = BytesIO()
         wb.save(excel_data)
         excel_data.seek(0)
         response = HttpResponse(excel_data, content_type="application/ms-excel")
         response["Content-Disposition"] = f'attachment; filename=activity_report_{current_month_name}_{current_year}.xlsx'
         return response
+
+    def __customize_sheet__(self, sheet, dep_nat, selected_date):
+        # Add a logo at the top right
+        script_directory = os.path.dirname(os.path.abspath(__file__))
+        logo_path = os.path.join(script_directory, 'static', 'images', 'logo.png')
+        img = Image(logo_path)
+        sheet.add_image(img, 'H1')
+
+        # Create a reverse mapping from dep_nat to the corresponding number
+        nat_group_mapping_reverse = {name: number for number, name in constants.NAT_GROUP_CHOICES}
+        # Get the number for the current dep_nat
+        dep_nat_number = nat_group_mapping_reverse.get(dep_nat, -1)
+
+        users = User.objects.filter(natGroup=dep_nat_number)
+
+        # Set the title in the middle
+        title_cell = sheet.cell(row=5, column=1, value=f"Dep NAT: {dep_nat}")
+        title_cell.font = Font(size=16, bold=True)
+        title_cell.alignment = Alignment(horizontal="center")
+
+        # Merge cells for the title
+        sheet.merge_cells(start_row=5, start_column=1, end_row=5, end_column=8)
+
+        # Set the selected date below the title
+        date_cell = sheet.cell(row=6, column=2, value=f"{selected_date.strftime('%B %Y')}")
+        date_cell.font = Font(size=14)
+        date_cell.alignment = Alignment(horizontal="center")
+
+        # Merge cells for 'No.' and 'Name'
+        sheet.merge_cells(start_row=8, start_column=1, end_row=8, end_column=4)
+        sheet.merge_cells(start_row=8, start_column=5, end_row=8, end_column=8)
+
+        # Set headers 'No.' and 'Name'
+        sheet.cell(row=8, column=1, value='No.').font = Font(size=12, bold=True, color='000000')
+        sheet.cell(row=8, column=5, value='Name').font = Font(size=12, bold=True, color='000000')
+
+        # Add counter under 'No.' and extract names under 'Name'
+        counter = 1
+        for row_num, user in enumerate(users, start=9):
+            sheet.cell(row=row_num, column=1, value=counter)
+            sheet.cell(row=row_num, column=5, value=user.get_full_name())
+            counter += 1
+
+        sheet.freeze_panes = sheet.cell(row=9, column=1)
 
     @action(detail=False, methods=['GET'])
     def export_all(self, request, *args, **kwargs):

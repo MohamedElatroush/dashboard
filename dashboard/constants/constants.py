@@ -38,12 +38,12 @@ PSD = 4
 RSMD = 5
 
 NAT_GROUP_CHOICES = (
-    (VCH, _('Vice Chairman')),
-    (FUD, _('Follow Up Department')),
-    (TD, _('Technical Department')),
-    (CWD, _('Civil Work Department')),
-    (PSD, _('Power Supply Department')),
-    (RSMD, _('Rolling Stock & Mechanical Department')),
+    (VCH, _('VCH')),
+    (FUD, _('FUD')),
+    (TD, _('TD')),
+    (CWD, _('CWD')),
+    (PSD, _('PSD')),
+    (RSMD, _('RSMD')),
 )
 
 OCG = 0
@@ -103,3 +103,5 @@ ACTIVITY_TYPES_CHOICES = (
 ERR_PASSWORD_RESET_NEEDED = {
     "detail": "Please reset your password first before performing that action, Go to profile > Change Password button"
 }
+
+DEP_HEADERS = ['No.', 'Name']
