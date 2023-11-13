@@ -77,10 +77,10 @@ class Activity(TimeStampedModel):
     userActivity = models.TextField(null=True, blank=True)
     activityType = models.IntegerField(choices=constants.ACTIVITY_TYPES_CHOICES, blank=False, null=False, default=constants.INOFFICE)
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True)
-    created = models.DateTimeField(default=timezone.now)
+    activityDate = models.DateField(default=timezone.now().date())
 
     def get_activity_type(self):
         return constants.ACTIVITY_TYPES_CHOICES[self.activityType][1]
 
     def __str__(self):
-        return f'User Activity by: {self.user.username} -- Date: {self.created.date()}'
+        return f'User Activity by: {self.user.username} -- Date: {self.activityDate}'

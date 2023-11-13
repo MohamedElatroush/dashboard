@@ -2,6 +2,7 @@ from rest_framework import serializers
 from .models import User, Activity
 from .constants import constants
 from gettext import gettext as _
+from datetime import date
 
 class CreateUserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -56,10 +57,11 @@ class ActivitySerializer(serializers.ModelSerializer):
             return constants.ACTIVITY_TYPES_CHOICES[activity_type][1]
         return None
 
-class ModifyActivitySerializer(serializers.ModelSerializer):
+class CreateActivitySerializer(serializers.ModelSerializer):
+    activityDate = serializers.DateField(default=date.today)
     class Meta:
         model=Activity
-        fields = ['userActivity', 'activityType']
+        fields = ['userActivity', 'activityType', 'activityDate']
 
 class MakeUserAdminSerializer(serializers.ModelSerializer):
     userId = serializers.IntegerField()

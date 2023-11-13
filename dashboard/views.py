@@ -1,15 +1,14 @@
 from .models import User, Activity
 from rest_framework.response import Response
-from rest_framework import permissions, status
+from rest_framework import status
 from .serializers import CreateUserSerializer, ListUsersSerializer, UserDeleteSerializer,\
-      ActivitySerializer,ModifyActivitySerializer, MakeUserAdminSerializer, ChangePasswordSerializer
+      ActivitySerializer, CreateActivitySerializer, MakeUserAdminSerializer, ChangePasswordSerializer
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from .constants import constants
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView
-from rest_framework.authtoken.models import Token
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.tokens import default_token_generator
@@ -19,14 +18,10 @@ from openpyxl.utils import get_column_letter
 from openpyxl.styles import Alignment
 from io import BytesIO
 from django.http import HttpResponse
-import pytz
 import pandas as pd
 from .utilities import utilities
-from django.utils import timezone
 from openpyxl.styles import Font, PatternFill, Border, Side
 from django.db import transaction
-from django.core.mail import send_mail
-from django.conf import settings
 
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     @classmethod
@@ -168,7 +163,7 @@ class UserViewSet(viewsets.ModelViewSet):
             return Response(status=status.HTTP_403_FORBIDDEN)
         # Check if an Excel file was uploaded
         if 'file' not in request.FILES:
-            return Response({'error': 'No file uploaded'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'detail': 'No file uploaded'}, status=status.HTTP_400_BAD_REQUEST)
         excel_file = request.FILES['file']
 
         try:
@@ -216,7 +211,7 @@ class UserViewSet(viewsets.ModelViewSet):
                     continue
                 # Create a new User object
                 user = User(
-                    username = utilities.generate_username_from_name(name, all_usernames),  # Assuming the username is the name, you might want to format this.
+                    username = new_username,  # Assuming the username is the name, you might want to format this.
                     email=email,
                     first_name=utilities.generate_first_name(name),
                     last_name=utilities.generate_last_name(name),
@@ -237,7 +232,7 @@ class UserViewSet(viewsets.ModelViewSet):
                 user.save()
             return Response({'message': 'Data extracted and printed successfully'}, status=status.HTTP_200_OK)
         except Exception as e:
-            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=False, methods=['PATCH'], url_path=r'change_password/(?P<userId>\w+(?:-\w+)*)')
     def change_password(self, request, *args, **kwargs):
@@ -262,6 +257,8 @@ class ActivityViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['GET'])
     def get_activities(self, request, *args, **kwargs):
+        requestId = request.user.id
+        user = User.objects.filter(id=requestId).first()
         date_param = request.query_params.get('date', None)
 
         if date_param:
@@ -269,33 +266,37 @@ class ActivityViewSet(viewsets.ModelViewSet):
             try:
                 selected_date = datetime.strptime(date_param, '%Y-%m-%d').date()
             except ValueError:
-                return Response({'error': 'Invalid date format. Please use YYYY-MM-DD format.'}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({'detail': 'Invalid date format. Please use YYYY-MM-DD format.'}, status=status.HTTP_400_BAD_REQUEST)
         else:
             # If no date is provided, default to today's date
             selected_date = date.today()
-        activities = Activity.objects.filter(created__date=selected_date).order_by('-created')
+        if user.is_superuser:
+            activities = Activity.objects.all().order_by('-created')
+        else:
+            activities = Activity.objects.filter(user_id=requestId).order_by('-created')
+            print(activities)
         serializer = ActivitySerializer(activities, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-    @action(detail=False, methods=['PATCH', 'PUT'], serializer_class=ModifyActivitySerializer, url_path=r'update_activity/(?P<activityId>\w+(?:-\w+)*)')
-    def update_activity(self, request, *args, **kwargs):
-        """
-            This endpoint allows the user owner of an activity to edit it
-        """
-        userId = request.user.id
-        activityId = kwargs['activityId']
-        activityObj = get_object_or_404(Activity, id=activityId)
+    # @action(detail=False, methods=['PATCH', 'PUT'], serializer_class=ModifyActivitySerializer, url_path=r'update_activity/(?P<activityId>\w+(?:-\w+)*)')
+    # def update_activity(self, request, *args, **kwargs):
+    #     """
+    #         This endpoint allows the user owner of an activity to edit it
+    #     """
+    #     userId = request.user.id
+    #     activityId = kwargs['activityId']
+    #     activityObj = get_object_or_404(Activity, id=activityId)
 
-        # Check if the user accessing the endpoint is the same one that created the activity or not
-        if userId != activityObj.user.id:
-            return Response(data=constants.NOT_ALLOWED_TO_ACCESS, status=status.HTTP_400_BAD_REQUEST)
+    #     # Check if the user accessing the endpoint is the same one that created the activity or not
+    #     if userId != activityObj.user.id:
+    #         return Response(data=constants.NOT_ALLOWED_TO_ACCESS, status=status.HTTP_400_BAD_REQUEST)
 
-        serializer = ModifyActivitySerializer(activityObj, data=request.data, partial=True)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(data=constants.SUCCESSFULLY_UPDATED_ACTIVITY, status=status.HTTP_200_OK)
+    #     serializer = ModifyActivitySerializer(activityObj, data=request.data, partial=True)
+    #     if serializer.is_valid():
+    #         serializer.save()
+    #         return Response(data=constants.SUCCESSFULLY_UPDATED_ACTIVITY, status=status.HTTP_200_OK)
 
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    #     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def _create_activity_excel_report(self, users, selected_date):
         current_date = datetime.now()
@@ -349,7 +350,7 @@ class ActivityViewSet(viewsets.ModelViewSet):
             ws.cell(row=row_num, column=5, value=str(user.get_expert())).font = font
             ws.cell(row=row_num, column=6, value=str(user.get_grade())).font = font
             for col, day in enumerate(range(1, last_day_of_month + 1), start=8):
-                activities_for_user_and_day = Activity.objects.filter(user=user, created__day=day)
+                activities_for_user_and_day = Activity.objects.filter(user=user, activityDate__day=day)
                 activity_types = ", ".join(activity.get_activityType_display() for activity in activities_for_user_and_day if activity.activityType is not None)
                 ws.cell(row=row_num, column=col, value=activity_types).font = font
                 if "C" in activity_types:
@@ -402,7 +403,7 @@ class ActivityViewSet(viewsets.ModelViewSet):
             try:
                 selected_date = datetime.strptime(date_param, '%Y-%m-%d').date()
             except ValueError:
-                return Response({'error': 'Invalid date format. Please use YYYY-MM-DD format.'}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({'detail': 'Invalid date format. Please use YYYY-MM-DD format.'}, status=status.HTTP_400_BAD_REQUEST)
         else:
             selected_date = date.today()
         users = User.objects.all()
@@ -419,23 +420,25 @@ class ActivityViewSet(viewsets.ModelViewSet):
 
         if User.objects.filter(id=userId).first().needsPasswordReset:
             return Response(constants.ERR_PASSWORD_RESET_NEEDED, status=status.HTTP_400_BAD_REQUEST)
-
-        # Check if the user has already logged an activity today
-        existing_activity = Activity.objects.filter(user__id=userId, created__date=today).first()
-
-        if existing_activity:
-            return Response({"error": "You have already logged an activity for today."}, status=status.HTTP_400_BAD_REQUEST)
-
-        serializer = ModifyActivitySerializer(data=request.data)
+        
+        serializer = CreateActivitySerializer(data=request.data)
         serializer.is_valid()
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
+        
         userActivity = serializer.validated_data.get('userActivity', None)
         activityType = serializer.validated_data.get('activityType', None)
+        activityDate = serializer.validated_data.get('activityDate', None)
+        # Check if the user has already logged an activity today
+        existing_activity = Activity.objects.filter(user__id=userId, activityDate=activityDate).first()
+
+        if existing_activity:
+            return Response({"detail": "You have already logged an activity for the selected date."}, status=status.HTTP_400_BAD_REQUEST)
+
         new_activity = Activity.objects.create(userActivity=userActivity,\
                                                 activityType=activityType,\
-                                                user_id=userId)
+                                                user_id=userId,
+                                                activityDate=activityDate)
         new_activity.save()
         return Response(constants.SUCCESSFULLY_CREATED_ACTIVITY, status=status.HTTP_201_CREATED)
 

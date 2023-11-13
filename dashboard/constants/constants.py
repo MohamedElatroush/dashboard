@@ -101,5 +101,5 @@ ACTIVITY_TYPES_CHOICES = (
 )
 
 ERR_PASSWORD_RESET_NEEDED = {
-    "detail": "Please reset your password first before performing that action"
+    "detail": "Please reset your password first before performing that action, Go to profile > Change Password button"
 }
