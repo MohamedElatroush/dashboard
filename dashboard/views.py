@@ -30,7 +30,8 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     def get_token(cls, user):
         token = super().get_token(user)
         token['username'] = user.username
-        token['isAdmin'] = user.is_superuser
+        token['isAdmin'] = user.isAdmin
+        token['is_superuser'] = user.is_superuser
         return token
 class MyTokenObtainPairView(TokenObtainPairView):
     serializer_class = MyTokenObtainPairSerializer
@@ -71,7 +72,7 @@ class UserViewSet(viewsets.ModelViewSet):
         user = User.objects.filter(id=userId).first()
 
         # if not super user dont show users
-        if not user.is_superuser:
+        if not (user.is_superuser or user.isAdmin):
             return Response(status=status.HTTP_403_FORBIDDEN)
         users = User.objects.all().order_by('hrCode')
         serializer = self.get_serializer(users, many=True)
@@ -97,11 +98,30 @@ class UserViewSet(viewsets.ModelViewSet):
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         user_id = serializer.validated_data['userId']
-        is_user_super = serializer.validated_data['is_superuser']
+        is_admin = serializer.validated_data['isAdmin']
 
         modified_user = User.objects.filter(id=user_id).first()
-        modified_user.is_staff = is_user_super
-        modified_user.is_superuser = is_user_super
+        modified_user.isAdmin = is_admin
+        modified_user.save()
+        return Response(status=status.HTTP_200_OK)
+    
+    @action(detail=False, methods=['PATCH'])
+    def revoke_admin(self, request, *args, **kwargs):
+        adminId = request.user.id
+        user = User.objects.filter(id=adminId).first()
+        # if not super user dont show users
+        if not user.is_superuser:
+            return Response(status=status.HTTP_403_FORBIDDEN)
+
+        serializer = MakeUserAdminSerializer(data=request.data)
+        serializer.is_valid()
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        user_id = serializer.validated_data['userId']
+        is_admin = serializer.validated_data['isAdmin']
+
+        modified_user = User.objects.filter(id=user_id).first()
+        modified_user.isAdmin = False
         modified_user.save()
         return Response(status=status.HTTP_200_OK)
 
@@ -147,7 +167,7 @@ class UserViewSet(viewsets.ModelViewSet):
         user_id = serializer.validated_data['userId']
         userObject = User.objects.filter(id=user_id).first()
         if not userObject:
-            return Response(constants.CANT_DELETE_USER_ERROR, status=status.HTTP_400_BAD_REQUEST)
+            return Response(constants.CANT_RESET_USER_PASSWORD_ERROR, status=status.HTTP_400_BAD_REQUEST)
         userObject.password = make_password("1234")
         userObject.save()
         return Response(constants.SUCCESSFULLY_DELETED_USER, status=status.HTTP_200_OK)
@@ -272,7 +292,7 @@ class ActivityViewSet(viewsets.ModelViewSet):
         else:
             # If no date is provided, default to today's date
             selected_date = date.today()
-        if user.is_superuser:
+        if user.is_superuser or user.isAdmin:
             activities = Activity.objects.all().order_by('-created')
         else:
             activities = Activity.objects.filter(user_id=requestId).order_by('-created')
@@ -425,7 +445,9 @@ class ActivityViewSet(viewsets.ModelViewSet):
     def export_all(self, request, *args, **kwargs):
         adminId = request.user.id
         userObj = User.objects.filter(id=adminId).first()
-        if not userObj.is_superuser:
+
+        if not (userObj.is_superuser or userObj.isAdmin):
+            print('here')
             return Response(constants.NOT_ALLOWED_TO_ACCESS, status=status.HTTP_400_BAD_REQUEST)
 
         # Get the date parameter from the query parameters

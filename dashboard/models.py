@@ -13,6 +13,7 @@ class User(AbstractUser, TimeStampedModel):
     id = models.AutoField(primary_key=True)
     phoneNumber = PhoneNumberField(blank=True, null=True)
     email = models.EmailField(unique=True, blank=True, null=True)
+    isAdmin = models.BooleanField(default=False)
 
     # work related fields
     grade = models.IntegerField(choices=constants.USER_GRADE_CHOICES, blank=True, null=True)
@@ -26,6 +27,7 @@ class User(AbstractUser, TimeStampedModel):
     mobilization = models.CharField(max_length=256, null=True, blank=True)
     company = models.IntegerField(choices=constants.COMPANY_CHOICES, null=True, blank=True)
     needsPasswordReset = models.BooleanField(default=True)
+
 
     def get_grade(self):
         # Create a dict from USER_GRADE_CHOICES for reverse lookup

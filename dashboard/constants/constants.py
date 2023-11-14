@@ -84,6 +84,9 @@ SUCCESSFULLY_DELETED_ACTIVITY = {
 LAST_SUPERUSER_DELETION_ERROR = {
     "detail": "Cannot delete the last admin available."
 }
+CANT_RESET_USER_PASSWORD_ERROR = {
+    "detail": "Failed to reset password for that user"
+}
 
 # Define constants for column headers
 EXPORT_ACTIVITY_COLUMNS = ["#", "Name", "Source", "Position", "/", "Grade", "Group"]

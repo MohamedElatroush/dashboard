@@ -67,7 +67,7 @@ class MakeUserAdminSerializer(serializers.ModelSerializer):
     userId = serializers.IntegerField()
     class Meta:
         model=User
-        fields = ['is_superuser', 'userId']
+        fields = ['isAdmin', 'userId']
 
 class ChangePasswordSerializer(serializers.Serializer):
     password = serializers.CharField()
