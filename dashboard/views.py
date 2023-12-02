@@ -470,7 +470,6 @@ class ActivityViewSet(viewsets.ModelViewSet):
             This endpoint allows the user to create an activity
         """
         userId = request.user.id
-        today = datetime.now().date()
 
         if User.objects.filter(id=userId).first().needsPasswordReset:
             return Response(constants.ERR_PASSWORD_RESET_NEEDED, status=status.HTTP_400_BAD_REQUEST)
