@@ -214,7 +214,7 @@ class UserViewSet(viewsets.ModelViewSet):
                 organization_code = row['Organization Code']
                 position = row['Position']
                 department = row['Department']
-                nat_group = int(row['NAT Group'])
+                nat_group = row['NAT Group']
                 working_location = row['Working Location']
                 expert = row['Expert']
                 mobilization_status = row['Mobilization status']
