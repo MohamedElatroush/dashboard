@@ -447,7 +447,6 @@ class ActivityViewSet(viewsets.ModelViewSet):
         userObj = User.objects.filter(id=adminId).first()
 
         if not (userObj.is_superuser or userObj.isAdmin):
-            print('here')
             return Response(constants.NOT_ALLOWED_TO_ACCESS, status=status.HTTP_400_BAD_REQUEST)
 
         # Get the date parameter from the query parameters
@@ -473,12 +472,12 @@ class ActivityViewSet(viewsets.ModelViewSet):
 
         if User.objects.filter(id=userId).first().needsPasswordReset:
             return Response(constants.ERR_PASSWORD_RESET_NEEDED, status=status.HTTP_400_BAD_REQUEST)
-        
+
         serializer = CreateActivitySerializer(data=request.data)
         serializer.is_valid()
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        
+
         userActivity = serializer.validated_data.get('userActivity', None)
         activityType = serializer.validated_data.get('activityType', None)
         activityDate = serializer.validated_data.get('activityDate', None)

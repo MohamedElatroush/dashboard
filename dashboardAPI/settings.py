@@ -186,3 +186,9 @@ SIMPLE_JWT = {
 }
 
 CORS_ALLOW_ALL_ORIGINS = True
+
+CORS_ALLOWED_ORIGINS = [
+    "http://54.145.211.86/",
+    "http://noce-dashboard2.s3-website-us-east-1.amazonaws.com/"
+    # Add other domains as needed
+]
