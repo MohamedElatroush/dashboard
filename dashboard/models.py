@@ -78,7 +78,7 @@ class User(AbstractUser, TimeStampedModel):
 class Activity(TimeStampedModel):
     userActivity = models.TextField(null=True, blank=True)
     activityType = models.IntegerField(choices=constants.ACTIVITY_TYPES_CHOICES, blank=False, null=False, default=constants.INOFFICE)
-    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True)
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     activityDate = models.DateField(default=timezone.now().date())
 
     def get_activity_type(self):
