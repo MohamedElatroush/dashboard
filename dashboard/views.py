@@ -32,6 +32,7 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
         token['username'] = user.username
         token['isAdmin'] = user.isAdmin
         token['is_superuser'] = user.is_superuser
+        token['calendarType'] = user.calendarType
         return token
 class MyTokenObtainPairView(TokenObtainPairView):
     serializer_class = MyTokenObtainPairSerializer
@@ -104,7 +105,7 @@ class UserViewSet(viewsets.ModelViewSet):
         modified_user.isAdmin = is_admin
         modified_user.save()
         return Response(status=status.HTTP_200_OK)
-    
+
     @action(detail=False, methods=['PATCH'])
     def revoke_admin(self, request, *args, **kwargs):
         adminId = request.user.id
@@ -173,7 +174,7 @@ class UserViewSet(viewsets.ModelViewSet):
         return Response(constants.SUCCESSFULLY_DELETED_USER, status=status.HTTP_200_OK)
 
     @transaction.atomic
-    @action(detail=False, methods=['post'], serializer_class=CreateUserSerializer)
+    @action(detail=False, methods=['post'])
     def excel_sign_up(self, request, *args, **kwargs):
         """
         This endpoint creates bulk users by taking the first_name column and last_name column
@@ -226,6 +227,11 @@ class UserViewSet(viewsets.ModelViewSet):
                 nat_group_choice = utilities.convert_nat_group_to_choice(nat_group)
                 company_choice = utilities.convert_company_to_choice(company)
 
+                if expert_choice == constants.EXPERT_USER:
+                    calendar_type = constants.CALENDAR_TYPE_EXPERT
+                elif expert_choice == constants.LOCAL_USER:
+                    calendar_type = constants.CALENDAR_TYPE_LOCAL
+
                 email = row['Email Address'] if pd.notnull(row['Email Address']) else None
                 new_username = utilities.generate_username_from_name(name, all_usernames)
                 if User.objects.filter(username=new_username).exists() or User.objects.filter(email=email).exists():
@@ -247,6 +253,7 @@ class UserViewSet(viewsets.ModelViewSet):
                     expert=expert_choice,
                     company=company_choice,
                     mobilization=mobilization_status,
+                    calendarType=calendar_type,
                     password=make_password("1234")
                 )
 

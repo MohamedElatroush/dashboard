@@ -27,6 +27,7 @@ class User(AbstractUser, TimeStampedModel):
     mobilization = models.CharField(max_length=256, null=True, blank=True)
     company = models.IntegerField(choices=constants.COMPANY_CHOICES, null=True, blank=True)
     needsPasswordReset = models.BooleanField(default=True)
+    calendarType = models.IntegerField(choices=constants.CALENDAR_CHOICES, null=True, blank=True)
 
 
     def get_grade(self):
