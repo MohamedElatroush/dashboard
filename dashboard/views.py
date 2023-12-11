@@ -2,7 +2,7 @@ from .models import User, Activity
 from rest_framework.response import Response
 from rest_framework import status
 from .serializers import CreateUserSerializer, ListUsersSerializer, UserDeleteSerializer,\
-      ActivitySerializer, CreateActivitySerializer, MakeUserAdminSerializer, ChangePasswordSerializer
+      ActivitySerializer, CreateActivitySerializer, MakeUserAdminSerializer, ChangePasswordSerializer, UserTimeSheetSerializer
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -24,6 +24,7 @@ from openpyxl.styles import Font, PatternFill, Border, Side
 from django.db import transaction
 from openpyxl.drawing.image import Image
 import os
+import calendar
 
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     @classmethod
@@ -277,6 +278,114 @@ class UserViewSet(viewsets.ModelViewSet):
                                                           password=make_password(serializer.validated_data['password']))
             return Response(data=constants.SUCCESSFULLY_CHANGED_PASSWORD, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=False, methods=['GET'], url_path=r'extract_timesheet/(?P<userId>\w+(?:-\w+)*)', serializer_class=UserTimeSheetSerializer)
+    def extract_timesheet(self, request, *args, **kwargs):
+        if not utilities.check_is_admin(request.user.id):
+            return Response(status=status.HTTP_403_FORBIDDEN)
+
+        serializer = UserTimeSheetSerializer(data=request.query_params)
+        serializer.is_valid()
+
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        # get the month and user id
+        date = serializer.validated_data['date']
+        user_id = kwargs['userId']
+
+        # get all the activities for that month by that user
+        activities = Activity.objects.filter(created__month=date.month, created__year=date.year, user__id=user_id).order_by('-created')
+
+        user = User.objects.get(id=user_id)
+
+        dateFont = Font(size=16)
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "User Timesheet"
+
+        name_year_month_border = Border(
+        left=Side(border_style='thin'),
+        right=Side(border_style='thin'),
+        top=Side(border_style='thin'),
+        bottom=Side(border_style='thin')
+    )
+
+        # Write the month and year headers at the top
+        ws.cell(row=1, column=1, value="Year")
+        ws.cell(row=1, column=1).border = name_year_month_border
+
+        ws.cell(row=1, column=2, value=date.year)
+        ws.cell(row=1, column=2).border = name_year_month_border
+
+        ws.cell(row=2, column=1, value="Month")
+        ws.cell(row=2, column=1).border = name_year_month_border
+        ws.cell(row=2, column=2, value=date.month)
+        ws.cell(row=2, column=2).border = name_year_month_border
+        ws.cell(row=1, column=1).font = dateFont  # Apply the font settings
+        ws.cell(row=1, column=2).font = dateFont  # Apply the font settings
+        ws.cell(row=2, column=1).font = dateFont  # Apply the font settings
+        ws.cell(row=2, column=2).font = dateFont  # Apply the font settings
+
+        ws.cell(row=1, column=7, value=user.get_full_name())
+        ws.cell(row=1, column=7).font = dateFont
+        ws.cell(row=1, column=7).border = name_year_month_border
+
+        ws.cell(row=2, column=7, value=user.department)
+        ws.cell(row=2, column=7).font = dateFont
+        ws.cell(row=2, column=7).border = name_year_month_border
+
+        # Create headers for columns
+        ws.cell(row=4, column=1, value="Day").font = dateFont
+        ws.cell(row=4, column=1).border = name_year_month_border
+        ws.cell(row=4, column=2, value="Cairo").font = dateFont
+        ws.cell(row=4, column=2).border = name_year_month_border
+        ws.cell(row=4, column=3, value="Japan").font = dateFont
+        ws.cell(row=4, column=3).border = name_year_month_border
+        ws.cell(row=4, column=4, value="Daily Activities").font = dateFont
+        ws.cell(row=4, column=4).border = name_year_month_border
+
+        script_directory = os.path.dirname(os.path.abspath(__file__))
+        logo_path = os.path.join(script_directory, 'static', 'images', 'logo.png')
+        img = Image(logo_path)
+        ws.add_image(img, 'P1')
+
+        for day in range(1, calendar.monthrange(date.year, date.month)[1] + 1):
+            row_index = day + 4  # Offset by 4 to account for existing rows
+            ws.cell(row=row_index, column=1, value=f"{day:02d}").font = dateFont
+            ws.cell(row=row_index, column=1).alignment = Alignment(horizontal='center')
+            activities_for_day = activities.filter(activityDate__day=day)
+            # Display activities for the day in the second column
+            activities_text = "\n".join([activity.userActivity for activity in activities_for_day])
+
+             # Merge cells for the "Activities" column
+            start_column_letter = get_column_letter(4)  # Column D
+            end_column_letter = get_column_letter(11)  # Adjust the last column letter as needed
+            activities_column_range = f"{start_column_letter}{row_index}:{end_column_letter}{row_index}"
+
+            ws.merge_cells(activities_column_range)
+
+            ws[start_column_letter + str(row_index)].alignment = Alignment(wrap_text=True)
+
+            ws.cell(row=row_index, column=4, value=activities_text)
+
+            activities_type = "\n".join([str(activity.get_activity_type()) for activity in activities_for_day])
+
+            start_column_letter = get_column_letter(2)  # Column B
+            end_column_letter = get_column_letter(2)
+
+            if user.expert == constants.LOCAL_USER:
+                ws.cell(row=row_index, column=2, value=activities_type)
+            elif user.expert == constants.EXPERT_USER:
+                ws.cell(row=row_index, column=3, value=activities_type)
+
+
+        excel_data = BytesIO()
+        wb.save(excel_data)
+        excel_data.seek(0)
+        response = HttpResponse(excel_data, content_type="application/ms-excel")
+        response["Content-Disposition"] = f'attachment; filename=timesheet{date.year}_{date.month}_{user_id}.xlsx'
+        return response
 
 class ActivityViewSet(viewsets.ModelViewSet):
     permission_classes=(IsAuthenticated,)

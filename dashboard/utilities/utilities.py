@@ -30,7 +30,7 @@ def check_is_admin(id):
     user = User.objects.filter(id=id).first()
 
     # if not super user dont show users
-    if not user.is_superuser:
+    if not (user.is_superuser or user.isAdmin):
         return False
     return True
 

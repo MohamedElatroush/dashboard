@@ -71,3 +71,6 @@ class MakeUserAdminSerializer(serializers.ModelSerializer):
 
 class ChangePasswordSerializer(serializers.Serializer):
     password = serializers.CharField()
+
+class UserTimeSheetSerializer(serializers.Serializer):
+    date = serializers.DateField(default=date.today)
