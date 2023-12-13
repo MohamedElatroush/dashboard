@@ -356,7 +356,7 @@ class UserViewSet(viewsets.ModelViewSet):
             ws.cell(row=row_index, column=1).alignment = Alignment(horizontal='center')
             activities_for_day = activities.filter(activityDate__day=day)
             # Display activities for the day in the second column
-            activities_text = "\n".join([activity.userActivity for activity in activities_for_day])
+            activities_text = "\n".join([activity.userActivity or '' for activity in activities_for_day])
 
              # Merge cells for the "Activities" column
             start_column_letter = get_column_letter(4)  # Column D

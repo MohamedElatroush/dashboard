@@ -24,6 +24,7 @@ numpy = "^1.26.1"
 pandas = "^2.1.2"
 gunicorn = "^21.2.0"
 pillow = "^10.1.0"
+schedule = "^1.2.1"
 
 [tool.poetry.group.dev.dependencies]
 django-rest-framework = "^0.1.0"
