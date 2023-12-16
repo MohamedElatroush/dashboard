@@ -10,6 +10,11 @@ class CreateUserSerializer(serializers.ModelSerializer):
         fields = ['username', 'password', 'email', 'phoneNumber', 'first_name', 'last_name', 'grade', 'organizationCode',\
                    'position', 'department', 'natGroup', 'workingLocation', 'mobilization', 'company']
 
+class EditUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['grade', 'organizationCode','position', 'department', 'natGroup', 'workingLocation', 'mobilization', 'company']
+
 class ListUsersSerializer(serializers.ModelSerializer):
     grade = serializers.SerializerMethodField()
     expert = serializers.SerializerMethodField()
@@ -73,4 +78,7 @@ class ChangePasswordSerializer(serializers.Serializer):
     password = serializers.CharField()
 
 class UserTimeSheetSerializer(serializers.Serializer):
+    date = serializers.DateField(default=date.today)
+
+class CalculateActivitySerializer(serializers.Serializer):
     date = serializers.DateField(default=date.today)

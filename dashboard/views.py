@@ -2,7 +2,7 @@ from .models import User, Activity
 from rest_framework.response import Response
 from rest_framework import status
 from .serializers import CreateUserSerializer, ListUsersSerializer, UserDeleteSerializer,\
-      ActivitySerializer, CreateActivitySerializer, MakeUserAdminSerializer, ChangePasswordSerializer, UserTimeSheetSerializer
+      ActivitySerializer, CreateActivitySerializer, MakeUserAdminSerializer, ChangePasswordSerializer, UserTimeSheetSerializer, EditUserSerializer, CalculateActivitySerializer
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -25,6 +25,9 @@ from django.db import transaction
 from openpyxl.drawing.image import Image
 import os
 import calendar
+from django.db.models import Count
+import numpy as np
+
 
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     @classmethod
@@ -120,12 +123,31 @@ class UserViewSet(viewsets.ModelViewSet):
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         user_id = serializer.validated_data['userId']
-        is_admin = serializer.validated_data['isAdmin']
 
         modified_user = User.objects.filter(id=user_id).first()
         modified_user.isAdmin = False
         modified_user.save()
         return Response(status=status.HTTP_200_OK)
+
+    # An endpoint for superusers only to edit any other user (grade, organizationcode..etc)
+    @action(detail=False, methods=['patch'], url_path=r'edit_details/(?P<userId>\w+(?:-\w+)*)')
+    def edit_details(self, request, *args, **kwargs):
+        user_id = kwargs['userId']
+        request_user = request.user
+
+        if not request_user.is_superuser:
+            return Response(status=status.HTTP_403_FORBIDDEN)
+
+        user = User.objects.filter(id=user_id).first()
+        if not user:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+        serializer = EditUserSerializer(user, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(status=status.HTTP_200_OK)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=False, methods=['delete'])
     def delete_user(self, request, *args, **kwargs):
@@ -629,3 +651,52 @@ class ActivityViewSet(viewsets.ModelViewSet):
 
         return Response(status=status.HTTP_400_BAD_REQUEST)
 
+    @action(detail=False, methods=['GET'])
+    def calculate_activity(self, request, *args, **kwargs):
+        """
+            This endpoint calculate how many activities a user does out of the possible working days
+            EXPERT -> Saturday, Sunday off
+            LOCAL -> Friday off
+        """
+        userId = request.user.id
+        if not utilities.check_is_admin(userId):
+            return Response(status=status.HTTP_403_FORBIDDEN)
+
+        serializer = UserTimeSheetSerializer(data=request.query_params)
+        serializer.is_valid()
+
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        date = serializer.validated_data['date']
+
+        # Filter activities for the current month excluding 'H' type activities
+        activities = Activity.objects.filter(
+            activityDate__month=date.month,
+            activityDate__year=date.year,
+              # Exclude 'H' type activities
+        ).exclude(activityType=constants.HOLIDAY)
+
+        # Group activities by user and count the number of activities
+        user_activities = (
+            activities.values('user__id', 'user__first_name', 'user__last_name', 'user__email')
+            .annotate(working_days=Count('id'))
+        )
+
+        data = list(user_activities)
+
+        users = User.objects.all()
+        for user_data in data:
+            user = users.filter(id=user_data['user__id']).first()
+            if user:
+                start_date = date.replace(day=1)
+                end_date = (date.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
+                if user.expert == constants.EXPERT_USER:
+                    total_working_days = np.busday_count(start_date, end_date)
+                elif user.expert == constants.LOCAL_USER:
+                    total_working_days = np.busday_count(start_date, end_date, weekmask='1111100')
+                else:
+                    total_working_days = 0
+                user_data['total_days'] = total_working_days
+
+        return Response(data, status=status.HTTP_200_OK)
