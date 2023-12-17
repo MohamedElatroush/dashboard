@@ -693,9 +693,9 @@ class ActivityViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['GET'])
     def calculate_activity(self, request, *args, **kwargs):
         """
-            This endpoint calculate how many activities a user does out of the possible working days
-            EXPERT -> Saturday, Sunday off
-            LOCAL -> Friday off
+        This endpoint calculates how many activities a user does out of the possible working days
+        EXPERT -> Saturday, Sunday off
+        LOCAL -> Friday off
         """
         userId = request.user.id
         if not utilities.check_is_admin(userId):
@@ -709,33 +709,40 @@ class ActivityViewSet(viewsets.ModelViewSet):
 
         date = serializer.validated_data['date']
 
-        # Filter activities for the current month excluding 'H' type activities
-        activities = Activity.objects.filter(
-            activityDate__month=date.month,
-            activityDate__year=date.year,
-              # Exclude 'H' type activities
-        ).exclude(activityType=constants.HOLIDAY).exclude(user__isnull=True)
-
-        # Group activities by user and count the number of activities
-        user_activities = (
-            activities.values('user__id', 'user__first_name', 'user__last_name', 'user__email')
-            .annotate(working_days=Count('id'))
-        )
-
-        data = list(user_activities)
-
+        # Get all users
         users = User.objects.all()
-        for user_data in data:
-            user = users.filter(id=user_data['user__id']).first()
-            if user:
-                start_date = date.replace(day=1)
-                end_date = (date.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
-                if user.expert == constants.EXPERT_USER:
-                    total_working_days = np.busday_count(start_date, end_date, weekmask='0011111')
-                elif user.expert == constants.LOCAL_USER:
-                    total_working_days = np.busday_count(start_date, end_date, weekmask='1111110')
-                else:
-                    total_working_days = 0
-                user_data['total_days'] = total_working_days
+
+        data = []
+
+        for user in users:
+            start_date = date.replace(day=1)
+            end_date = (date.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
+
+            if user.expert == constants.EXPERT_USER:
+                total_working_days = np.busday_count(start_date, end_date, weekmask='0011111')
+            elif user.expert == constants.LOCAL_USER:
+                total_working_days = np.busday_count(start_date, end_date, weekmask='1111110')
+            else:
+                total_working_days = 0
+
+            # Filter activities for the current user and month excluding 'H' type activities
+            activities = Activity.objects.filter(
+                user=user,
+                activityDate__month=date.month,
+                activityDate__year=date.year,
+            ).exclude(activityType=constants.HOLIDAY)
+
+            # Count the number of activities
+            working_days = activities.count()
+
+            # Append user data to the response
+            data.append({
+                'user__id': user.id,
+                'user__first_name': user.first_name,
+                'user__last_name': user.last_name,
+                'user__email': user.email,
+                'working_days': working_days,
+                'total_days': total_working_days,
+            })
 
         return Response(data, status=status.HTTP_200_OK)
