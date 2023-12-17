@@ -27,6 +27,7 @@ import os
 import calendar
 from django.db.models import Count
 import numpy as np
+import json
 
 
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -437,7 +438,16 @@ class ActivityViewSet(viewsets.ModelViewSet):
         serializer = ActivitySerializer(activities, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-    def _create_activity_excel_report(self, users, selected_date):
+    @action(detail=False, methods=['GET'])
+    def my_activities(self, request, *args, **kwargs):
+        requestId = request.user.id
+        user = User.objects.filter(id=requestId).first()
+
+        activities = Activity.objects.filter(user=user).order_by('-created')
+        serializer = ActivitySerializer(activities, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def _create_activity_excel_report(self, users, activities, selected_date):
         current_date = datetime.now()
         current_month = current_date.month
         current_year = current_date.year
@@ -481,40 +491,68 @@ class ActivityViewSet(viewsets.ModelViewSet):
             cell.alignment = Alignment(horizontal="center")
             cell.font = font if column_title.isnumeric() else None
 
-        for row_num, user in enumerate(users, 4):
+        user_rows = {}
+        for row_num, activity in enumerate(activities, 4):
+            # user_details = activity.user_details
+            if isinstance(activity.user_details, str):
+                user_details = json.loads(activity.user_details)
+            else:
+                user_details = activity.user_details
+
+            user_id = str(user_details.get('id', ''))
+
+            if user_id not in user_rows:
+                # If the user row doesn't exist, create a new one
+                user_rows[user_id] = {
+                    'user_counter': row_num - 3,
+                    'full_name': user_details.get('fullName', ''),
+                    'company': user_details.get('company', ''),
+                    'position': user_details.get('position', ''),
+                    'expert': user_details.get('expert', ''),
+                    'grade': user_details.get('grade', ''),
+                    'nat_group': user_details.get('natGroup', ''),
+                    'invoiced': 'X',
+                    'activities': {day: '' for day in range(1, last_day_of_month + 1)}
+                }
+            # Update activity for the corresponding day
+            day = activity.activityDate.day
+            activity_type = activity.get_activityType_display()
+            user_rows[user_id]['activities'][day] = activity_type
+
+        for user_id, user_data in user_rows.items():
+            row_num = user_data['user_counter'] + 2
             ws.cell(row=row_num, column=1, value=row_num - 3).font = font  # Add userCounter
-            ws.cell(row=row_num, column=2, value=user.get_full_name()).font = Font(size=8, bold=True)
-            ws.cell(row=row_num, column=3, value=str(user.get_company())).font = font
-            ws.cell(row=row_num, column=4, value=str(user.position)).font = font
-            ws.cell(row=row_num, column=5, value=str(user.get_expert())).font = font
-            ws.cell(row=row_num, column=6, value=str(user.get_grade())).font = font
-            for col, day in enumerate(range(1, last_day_of_month + 1), start=8):
-                activities_for_user_and_day = Activity.objects.filter(user=user, activityDate__day=day)
-                activity_types = ", ".join(activity.get_activityType_display() for activity in activities_for_user_and_day if activity.activityType is not None)
-                ws.cell(row=row_num, column=col, value=activity_types).font = font
-                if "C" in activity_types:
+            ws.cell(row=row_num, column=2, value=user_data['full_name']).font = Font(size=8, bold=True)
+            ws.cell(row=row_num, column=3, value=str(user_data['company'])).font = font
+            ws.cell(row=row_num, column=4, value=str(user_data['position'])).font = font
+            ws.cell(row=row_num, column=5, value=str(user_data['expert'])).font = font
+            ws.cell(row=row_num, column=6, value=str(user_data['grade'])).font = font
+
+            for col, activity_type in user_data['activities'].items():
+                ws.cell(row=row_num, column=col + 7, value=activity_type).font = font
+                if "C" in activity_type:
                     green_fill = PatternFill(start_color="A8D08D", end_color="A8D08D", fill_type="solid")
-                    ws.cell(row=row_num, column=col).fill = green_fill
-                if "X" in activity_types:
+                    ws.cell(row=row_num, column=col + 7).fill = green_fill
+                if "X" in activity_type:
                     red_fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
-                    ws.cell(row=row_num, column=col).fill = red_fill
-                if "H" in activity_types:
+                    ws.cell(row=row_num, column=col + 7).fill = red_fill
+                if "H" in activity_type:
                     grey_fill = PatternFill(start_color="A6A6A6", end_color="A6A6A6", fill_type="solid")
-                    ws.cell(row=row_num, column=col).fill = grey_fill
-                if "J" in activity_types:
+                    ws.cell(row=row_num, column=col + 7).fill = grey_fill
+                if "J" in activity_type:
                     pink_fill = PatternFill(start_color="FCE4D6", end_color="FCE4D6", fill_type="solid")
-                    ws.cell(row=row_num, column=col).fill = pink_fill
-                # Set horizontal alignment to "center"
-                cell.alignment = Alignment(horizontal="center")
-            col = 8 + last_day_of_month
-            ws.cell(row=row_num, column=col, value=str(user.get_natGroup())).font = font
-            col += 1
-            ws.cell(row=row_num, column=col, value="X").font = font
+                    ws.cell(row=row_num, column=col + 7).fill = pink_fill
+            ws.cell(row=row_num, column=7 + last_day_of_month + 1, value=user_data['nat_group']).font = font
+            ws.cell(row=row_num, column=7 + last_day_of_month + 2, value=user_data['invoiced']).font = font
 
             for cell in ws[row_num]:
                 cell.border = thin_border
-             # Freeze the top row containing day headers
         ws.freeze_panes = ws.cell(row=4, column=8)
+
+        col = 8 + last_day_of_month
+        ws.cell(row=row_num, column=col, value=str(user_details.get('natGroup', ''))).font = font
+        col += 1
+        ws.cell(row=row_num, column=col, value="X").font = font
 
         for col_idx in range(8, 8 + last_day_of_month):
             column_letter = get_column_letter(col_idx)
@@ -598,7 +636,8 @@ class ActivityViewSet(viewsets.ModelViewSet):
         else:
             selected_date = date.today()
         users = User.objects.all()
-        response = self._create_activity_excel_report(users, selected_date)
+        activities = Activity.objects.all()
+        response = self._create_activity_excel_report(users, activities, selected_date)
         return response
 
     @action(detail=False, methods=['POST'])
@@ -615,7 +654,7 @@ class ActivityViewSet(viewsets.ModelViewSet):
         serializer.is_valid()
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
+        
         userActivity = serializer.validated_data.get('userActivity', None)
         activityType = serializer.validated_data.get('activityType', None)
         activityDate = serializer.validated_data.get('activityDate', None)
@@ -675,7 +714,7 @@ class ActivityViewSet(viewsets.ModelViewSet):
             activityDate__month=date.month,
             activityDate__year=date.year,
               # Exclude 'H' type activities
-        ).exclude(activityType=constants.HOLIDAY)
+        ).exclude(activityType=constants.HOLIDAY).exclude(user__isnull=True)
 
         # Group activities by user and count the number of activities
         user_activities = (
@@ -692,9 +731,9 @@ class ActivityViewSet(viewsets.ModelViewSet):
                 start_date = date.replace(day=1)
                 end_date = (date.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
                 if user.expert == constants.EXPERT_USER:
-                    total_working_days = np.busday_count(start_date, end_date)
+                    total_working_days = np.busday_count(start_date, end_date, weekmask='0011111')
                 elif user.expert == constants.LOCAL_USER:
-                    total_working_days = np.busday_count(start_date, end_date, weekmask='1111100')
+                    total_working_days = np.busday_count(start_date, end_date, weekmask='1111110')
                 else:
                     total_working_days = 0
                 user_data['total_days'] = total_working_days

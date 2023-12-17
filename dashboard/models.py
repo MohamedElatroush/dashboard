@@ -7,6 +7,7 @@ from django.db.models.signals import post_delete
 from django.dispatch import receiver
 from django.utils import timezone
 from datetime import datetime
+import json
 
 # Create your models here.
 class User(AbstractUser, TimeStampedModel):
@@ -81,9 +82,42 @@ class Activity(TimeStampedModel):
     activityType = models.IntegerField(choices=constants.ACTIVITY_TYPES_CHOICES, blank=False, null=False, default=constants.INOFFICE)
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     activityDate = models.DateField(default=timezone.now().date())
+    user_details = models.JSONField(null=True, blank=True)
 
     def get_activity_type(self):
         return constants.ACTIVITY_TYPES_CHOICES[self.activityType][1]
 
+    def save_user_details(self):
+        if self.user:
+            user_details = {
+                'id': self.user.id,
+                'username': self.user.username,
+                'fullName': self.user.get_full_name(),
+                'email': self.user.email,
+                'phoneNumber': str(self.user.phoneNumber) if self.user.phoneNumber else None,
+                'isAdmin': self.user.isAdmin,
+                'grade': str(self.user.get_grade()) if self.user.get_grade() else None,
+                'hrCode': self.user.hrCode,
+                'organizationCode': self.user.organizationCode,
+                'position': self.user.position,
+                'department': self.user.department,
+                'natGroup': str(self.user.get_natGroup()) if self.user.get_natGroup() else None,
+                'workingLocation': self.user.workingLocation,
+                'expert': str(self.user.get_expert()) if self.user.get_expert() else None,
+                'mobilization': self.user.mobilization,
+                'company': str(self.user.get_company()) if self.user.get_company() else None,
+                'needsPasswordReset': self.user.needsPasswordReset,
+                'calendarType': self.user.calendarType,
+                # Add any other user details you want to include
+            }
+            self.user_details = user_details
+
+    def save(self, *args, **kwargs):
+        self.save_user_details()
+        super().save(*args, **kwargs)
+
     def __str__(self):
-        return f'User Activity by: {self.user.username} -- Date: {self.activityDate}'
+        if self.user:
+            return f'User Activity by: {self.user.username} -- Date: {self.activityDate}'
+        else:
+            return f'User Activity (Deleted User) -- Date: {self.activityDate}'
