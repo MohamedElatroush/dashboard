@@ -25,9 +25,9 @@ from django.db import transaction
 from openpyxl.drawing.image import Image
 import os
 import calendar
-from django.db.models import Count
 import numpy as np
 import json
+from urllib.parse import unquote
 
 
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -80,7 +80,7 @@ class UserViewSet(viewsets.ModelViewSet):
         # if not super user dont show users
         if not (user.is_superuser or user.isAdmin):
             return Response(status=status.HTTP_403_FORBIDDEN)
-        users = User.objects.all().order_by('hrCode')
+        users = User.objects.all().order_by('created')
         serializer = self.get_serializer(users, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -542,17 +542,19 @@ class ActivityViewSet(viewsets.ModelViewSet):
                 if "J" in activity_type:
                     pink_fill = PatternFill(start_color="FCE4D6", end_color="FCE4D6", fill_type="solid")
                     ws.cell(row=row_num, column=col + 7).fill = pink_fill
+
+            user_details = user_data.get('user_details', {})
             ws.cell(row=row_num, column=7 + last_day_of_month + 1, value=user_data['nat_group']).font = font
             ws.cell(row=row_num, column=7 + last_day_of_month + 2, value=user_data['invoiced']).font = font
 
             for cell in ws[row_num]:
                 cell.border = thin_border
-        ws.freeze_panes = ws.cell(row=4, column=8)
+            ws.freeze_panes = ws.cell(row=4, column=8)
 
-        col = 8 + last_day_of_month
-        ws.cell(row=row_num, column=col, value=str(user_details.get('natGroup', ''))).font = font
-        col += 1
-        ws.cell(row=row_num, column=col, value="X").font = font
+            col = 8 + last_day_of_month
+            ws.cell(row=row_num, column=col, value=str(user_details.get('natGroup', ''))).font = font
+            col += 1
+            ws.cell(row=row_num, column=col, value="X").font = font
 
         for col_idx in range(8, 8 + last_day_of_month):
             column_letter = get_column_letter(col_idx)
@@ -627,6 +629,19 @@ class ActivityViewSet(viewsets.ModelViewSet):
 
         # Get the date parameter from the query parameters
         date_param = request.query_params.get('date', None)
+        company_param = request.query_params.get('company', None)
+        department_param = request.query_params.get('department', None)
+
+        if company_param is not None:
+            try:
+                company_param_int = int(company_param)
+                selected_company = dict(constants.COMPANY_CHOICES).get(company_param_int)
+                if selected_company is None:
+                    return Response({'detail': 'Invalid company parameter.'}, status=status.HTTP_400_BAD_REQUEST)
+            except ValueError:
+                return Response({'detail': 'Invalid company parameter. Must be an integer.'}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            selected_company = None
 
         if date_param:
             try:
@@ -636,7 +651,15 @@ class ActivityViewSet(viewsets.ModelViewSet):
         else:
             selected_date = date.today()
         users = User.objects.all()
-        activities = Activity.objects.all()
+
+        if selected_company==None:
+            activities = Activity.objects.all()
+        else:
+            activities = Activity.objects.filter(user_details__company=str(selected_company))
+
+        if department_param:
+            department_param = unquote(department_param)
+            activities = activities.filter(user_details__department=str(department_param))
         response = self._create_activity_excel_report(users, activities, selected_date)
         return response
 
