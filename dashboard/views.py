@@ -63,7 +63,7 @@ class UserRegistrationViewSet(viewsets.ViewSet):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class UserViewSet(viewsets.ModelViewSet):
-    permission_classes=(IsAuthenticated,)
+    # permission_classes=(IsAuthenticated,)
     queryset = User.objects.all()
 
     def get_serializer_class(self):
@@ -470,9 +470,11 @@ class ActivityViewSet(viewsets.ModelViewSet):
         last_day_of_month = (current_date.replace(day=1, month=current_month % 12 + 1, year=current_year) - timedelta(days=1)).day
         day_headers = [str(day) for day in range(1, last_day_of_month + 1)]
 
+        constants.EXPORT_ACTIVITY_COLUMNS += ["Cairo", "Japan", "Cairo %", "Japan %"]
         constants.EXPORT_ACTIVITY_COLUMNS += day_headers
         addition_headers = ["Dep NAT", "Invoiced"]
         constants.EXPORT_ACTIVITY_COLUMNS += addition_headers
+        
 
         # Create a new Excel workbook and add a worksheet
         wb = Workbook()
@@ -493,7 +495,6 @@ class ActivityViewSet(viewsets.ModelViewSet):
 
         user_rows = {}
         for row_num, activity in enumerate(activities, 4):
-            # user_details = activity.user_details
             if isinstance(activity.user_details, str):
                 user_details = json.loads(activity.user_details)
             else:
@@ -504,7 +505,7 @@ class ActivityViewSet(viewsets.ModelViewSet):
             if user_id not in user_rows:
                 # If the user row doesn't exist, create a new one
                 user_rows[user_id] = {
-                    'user_counter': row_num - 3,
+                    'user_counter': row_num - 2,
                     'full_name': user_details.get('fullName', ''),
                     'company': user_details.get('company', ''),
                     'position': user_details.get('position', ''),
@@ -512,6 +513,10 @@ class ActivityViewSet(viewsets.ModelViewSet):
                     'grade': user_details.get('grade', ''),
                     'nat_group': user_details.get('natGroup', ''),
                     'invoiced': 'X',
+                    'Cairo': '',
+                    'Japan': '',
+                    'Cairo %': '',
+                    'Japan %': '',
                     'activities': {day: '' for day in range(1, last_day_of_month + 1)}
                 }
             # Update activity for the corresponding day
@@ -528,35 +533,67 @@ class ActivityViewSet(viewsets.ModelViewSet):
             ws.cell(row=row_num, column=5, value=str(user_data['expert'])).font = font
             ws.cell(row=row_num, column=6, value=str(user_data['grade'])).font = font
 
+            ws.cell(row=row_num, column=7 + last_day_of_month + 5, value=user_data['nat_group']).font = font
+            ws.cell(row=row_num, column=7 + last_day_of_month + 6, value=user_data['invoiced']).font = font
+
+            cairo_count = 0
+            total_working_days_cairo = 0
+            japan_count = 0
+            total_working_days_japan = 0
             for col, activity_type in user_data['activities'].items():
-                ws.cell(row=row_num, column=col + 7, value=activity_type).font = font
+                # calculate total possible days
+                if activity_type not in ['H']:
+                    total_working_days_japan += 1
+                    total_working_days_cairo += 1
+
+                if user_data['expert'] == 'EXP' and activity_type not in ['X', 'H', '']:
+                    japan_count += 1
+                if user_data['expert'] == 'LOC' and activity_type not in ['X', 'H', '']:
+                    cairo_count += 1
+                
+
+                ws.cell(row=row_num, column=col + 11, value=activity_type).font = font
                 if "C" in activity_type:
                     green_fill = PatternFill(start_color="A8D08D", end_color="A8D08D", fill_type="solid")
-                    ws.cell(row=row_num, column=col + 7).fill = green_fill
+                    ws.cell(row=row_num, column=col + 11).fill = green_fill
                 if "X" in activity_type:
                     red_fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
-                    ws.cell(row=row_num, column=col + 7).fill = red_fill
+                    ws.cell(row=row_num, column=col + 11).fill = red_fill
                 if "H" in activity_type:
                     grey_fill = PatternFill(start_color="A6A6A6", end_color="A6A6A6", fill_type="solid")
-                    ws.cell(row=row_num, column=col + 7).fill = grey_fill
+                    ws.cell(row=row_num, column=col + 11).fill = grey_fill
                 if "J" in activity_type:
                     pink_fill = PatternFill(start_color="FCE4D6", end_color="FCE4D6", fill_type="solid")
-                    ws.cell(row=row_num, column=col + 7).fill = pink_fill
+                    ws.cell(row=row_num, column=col + 11).fill = pink_fill
+                    
+            # Check if total_working_days_cairo is not zero before calculating the percentage
+            cairo_percentage = round(cairo_count / total_working_days_cairo, 5) if total_working_days_cairo != 0 else 0
+
+            # Check if total_working_days_japan is not zero before calculating the percentage
+            japan_percentage = round(japan_count / total_working_days_japan, 5) if total_working_days_japan != 0 else 0
+
+            # worked days
+            red_bold_italic_font = Font(size=12, color="FF0000", bold=True, italic=True)
+            ws.cell(row=row_num, column=7 + 1, value=cairo_count).font = red_bold_italic_font
+            ws.cell(row=row_num, column=7 + 2, value=japan_count).font = red_bold_italic_font
+
+            ws.cell(row=row_num, column=7 + 3, value=cairo_percentage).font = red_bold_italic_font
+            ws.cell(row=row_num, column=7 + 4, value=japan_percentage).font = red_bold_italic_font
 
             user_details = user_data.get('user_details', {})
-            ws.cell(row=row_num, column=7 + last_day_of_month + 1, value=user_data['nat_group']).font = font
-            ws.cell(row=row_num, column=7 + last_day_of_month + 2, value=user_data['invoiced']).font = font
+           
 
             for cell in ws[row_num]:
                 cell.border = thin_border
             ws.freeze_panes = ws.cell(row=4, column=8)
 
-            col = 8 + last_day_of_month
-            ws.cell(row=row_num, column=col, value=str(user_details.get('natGroup', ''))).font = font
-            col += 1
-            ws.cell(row=row_num, column=col, value="X").font = font
+            # col = 12 + last_day_of_month
+            # ws.cell(row=row_num, column=col, value=str(user_details.get('natGroup', ''))).font = font
+            
+            # col += 1
+            # ws.cell(row=row_num, column=col, value="X").font = font
 
-        for col_idx in range(8, 8 + last_day_of_month):
+        for col_idx in range(12, 12 + last_day_of_month):
             column_letter = get_column_letter(col_idx)
             ws.column_dimensions[column_letter].width = 3
 
