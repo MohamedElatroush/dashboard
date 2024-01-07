@@ -8,7 +8,7 @@ class CreateUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['username', 'password', 'email', 'phoneNumber', 'first_name', 'last_name', 'grade', 'organizationCode',\
-                   'position', 'department', 'natGroup', 'workingLocation', 'mobilization', 'company']
+                   'position', 'department', 'natGroup', 'workingLocation', 'mobilization', 'company','isDeleted']
 
 class EditUserSerializer(serializers.ModelSerializer):
     class Meta:

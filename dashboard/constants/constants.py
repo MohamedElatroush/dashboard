@@ -1,4 +1,5 @@
 from django.utils.translation import gettext_lazy as _
+from openpyxl.styles import Font, Alignment, Border, Side
 
 GRADE_A_1 = 0
 GRADE_A_2 = 1
@@ -92,13 +93,13 @@ CANT_RESET_USER_PASSWORD_ERROR = {
 EXPORT_ACTIVITY_COLUMNS = ["#", "Name", "Source", "Position", "/", "Grade", "Group"]
 
 HOLIDAY = 0 
-INOFFICE = 1
+INCAIRO = 1
 OFFDAY = 2
 HOMEASSIGN = 3
 
 ACTIVITY_TYPES_CHOICES = (
     (HOLIDAY, _('H')),
-    (INOFFICE, _('C')),
+    (INCAIRO, _('C')),
     (OFFDAY, _('X')),
     (HOMEASSIGN, _('J')),
 )
@@ -116,3 +117,10 @@ CALENDAR_CHOICES = (
     (CALENDAR_TYPE_EXPERT, _('Expert Calendar')),
     (CALENDAR_TYPE_LOCAL, _('Local Calendar')),
 )
+
+COVER_TS_TEXT = "Consulting Services for Greater Cairo Metro Line No. 4 Phase 1 Project"
+
+BORDER_STYLE = Border(top=Side(style='thin', color='000000'),
+                     left=Side(style='thin', color='000000'),
+                     right=Side(style='thin', color='000000'),
+                     bottom=Side(style='thin', color='000000'))

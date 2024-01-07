@@ -12,45 +12,33 @@ def schedule():
     old_activities.delete()
 
 def holidays():
+    current_date = timezone.now()
+
     users = User.objects.all()
 
-    current_date = timezone.now()
-    year = current_date.year
-    month = current_date.month
-
     # Get the first day and last day of the month
-    last_day_of_current_month = timezone.datetime(year, month, 1) + timezone.timedelta(days=32)
-    last_day = timezone.datetime(last_day_of_current_month.year, last_day_of_current_month.month, 1) - timezone.timedelta(days=1)
+    last_day_of_current_month = current_date.replace(day=1) + timezone.timedelta(days=32)
+    last_day = last_day_of_current_month.replace(day=1) - timezone.timedelta(days=1)
 
+    # LOCAL USERS
     for user in users:
-        current_day = timezone.datetime(year, month, 1)
+        current_day = current_date.replace(day=1)
         while current_day <= last_day:
-            # Check if the current day is a Friday for local users or a Saturday/Sunday for experts
-            if (
-                (user.expert == constants.EXPERT_USER and current_day.weekday() in [5, 6]) or
-                (user.expert == constants.LOCAL_USER and current_day.weekday() == 4)
-            ):
-                # Create the activity for the user
-                activity_date = current_day.date()
-                # Activity.objects.all().delete()
-                existing_activity = Activity.objects.filter(
-                    user=user,
-                    activityDate=activity_date
-                ).first()
+            existing_activity = Activity.objects.filter(
+                user=user,
+                activityDate=current_day.date()
+            ).first()
 
-                if existing_activity:
-                    # Update existing activity type
-                    existing_activity.activityType = constants.HOLIDAY
-                    existing_activity.save()
-                else:
-                    # Create a new activity
-                    Activity.objects.create(
-                        user=user,
-                        activityDate=activity_date,
-                        activityType=constants.HOLIDAY
-                    )
+            if existing_activity:
+                # If the user has an existing activity, do nothing
+                pass
+            else:
+                # If no activity exists, create a new activity with type X (OFFDAY)
+                Activity.objects.create(
+                    user=user,
+                    activityDate=current_day.date(),
+                    activityType=constants.OFFDAY
+                )
 
             # Move to the next day
             current_day += timezone.timedelta(days=1)
-    # Bulk create the activities
-    # Activity.objects.bulk_create(activities_to_create)

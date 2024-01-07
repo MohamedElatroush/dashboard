@@ -6,8 +6,7 @@ from .constants import constants
 from django.db.models.signals import post_delete
 from django.dispatch import receiver
 from django.utils import timezone
-from datetime import datetime
-import json
+from datetime import datetime, timedelta
 
 # Create your models here.
 class User(AbstractUser, TimeStampedModel):
@@ -29,7 +28,7 @@ class User(AbstractUser, TimeStampedModel):
     company = models.IntegerField(choices=constants.COMPANY_CHOICES, null=True, blank=True)
     needsPasswordReset = models.BooleanField(default=True)
     calendarType = models.IntegerField(choices=constants.CALENDAR_CHOICES, null=True, blank=True)
-
+    isDeleted = models.BooleanField(default=False)
 
     def get_grade(self):
         # Create a dict from USER_GRADE_CHOICES for reverse lookup
@@ -79,7 +78,7 @@ class User(AbstractUser, TimeStampedModel):
 
 class Activity(TimeStampedModel):
     userActivity = models.TextField(null=True, blank=True)
-    activityType = models.IntegerField(choices=constants.ACTIVITY_TYPES_CHOICES, blank=False, null=False, default=constants.INOFFICE)
+    activityType = models.IntegerField(choices=constants.ACTIVITY_TYPES_CHOICES, blank=False, null=False, default=constants.INCAIRO)
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     activityDate = models.DateField(default=timezone.now().date())
     user_details = models.JSONField(null=True, blank=True)
@@ -111,6 +110,49 @@ class Activity(TimeStampedModel):
                 # Add any other user details you want to include
             }
             self.user_details = user_details
+
+    def get_working_days(self, year, month):
+        # Check if the user is of type LOC
+        if self.user and self.user.expert == constants.EXPERT.LOC:
+            # Calculate the first and last day of the month
+            first_day = datetime(year, month, 1)
+            last_day = datetime(year, month + 1, 1) - timedelta(days=1)
+
+            # Get all activities for the specified month
+            activities = Activity.objects.filter(
+                user=self.user,
+                activityDate__range=(first_day, last_day)
+            )
+
+            # Define a function to check if a day is a working day
+            def is_working_day(activity_type):
+                return activity_type == constants.WORKING_DAY
+
+            working_days_count = 0
+
+            # Iterate over each day in the month
+            current_day = first_day
+            while current_day <= last_day:
+                # Check if the current day is a Friday
+                if current_day.weekday() == 4:  # 0 = Monday, 1 = Tuesday, ..., 6 = Sunday
+                    # Check the activity type for Friday
+                    friday_activity = activities.filter(activityDate=current_day).first()
+
+                    if friday_activity:
+                        # Check the conditions for counting Friday as a working day
+                        if (
+                            is_working_day(friday_activity.activityType) or
+                            (current_day - timedelta(days=1)).weekday() == 3 and is_working_day(activities.filter(activityDate=current_day - timedelta(days=1)).first().activityType) and
+                            (current_day + timedelta(days=1)).weekday() == 5 and is_working_day(activities.filter(activityDate=current_day + timedelta(days=1)).first().activityType)
+                        ):
+                            working_days_count += 1
+
+                # Move to the next day
+                current_day += timedelta(days=1)
+
+            return working_days_count
+        else:
+            return 0
 
     def save(self, *args, **kwargs):
         self.save_user_details()

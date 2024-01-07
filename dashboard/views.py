@@ -28,7 +28,8 @@ import calendar
 import numpy as np
 import json
 from urllib.parse import unquote
-
+from django.utils import timezone
+import calendar
 
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     @classmethod
@@ -80,7 +81,7 @@ class UserViewSet(viewsets.ModelViewSet):
         # if not super user dont show users
         if not (user.is_superuser or user.isAdmin):
             return Response(status=status.HTTP_403_FORBIDDEN)
-        users = User.objects.all().order_by('created')
+        users = User.objects.filter(isDeleted=False).order_by('created')
         serializer = self.get_serializer(users, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -171,7 +172,15 @@ class UserViewSet(viewsets.ModelViewSet):
                 if superusers_count <= 1:
                     return Response(constants.LAST_SUPERUSER_DELETION_ERROR, status=status.HTTP_400_BAD_REQUEST)
 
-            userObject.delete()
+            # Instead of deleting, mark the user as deleted
+            userObject.isDeleted = True
+            userObject.save()
+            # Clear specific fields for the deleted user
+            with transaction.atomic():
+                userObject.grade = None
+                userObject.hrCode = None
+                userObject.organizationCode = None
+                userObject.save()
             return Response(constants.SUCCESSFULLY_DELETED_USER, status=status.HTTP_200_OK)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -324,6 +333,7 @@ class UserViewSet(viewsets.ModelViewSet):
 
         dateFont = Font(size=16)
         wb = Workbook()
+
         ws = wb.active
         ws.title = "User Timesheet"
 
@@ -398,7 +408,10 @@ class UserViewSet(viewsets.ModelViewSet):
             end_column_letter = get_column_letter(2)
 
             if user.expert == constants.LOCAL_USER:
-                ws.cell(row=row_index, column=2, value=activities_type)
+                if activities_type == "J":
+                    ws.cell(row=row_index, column=3, value=activities_type)
+                else:
+                    ws.cell(row=row_index, column=2, value=activities_type)
             elif user.expert == constants.EXPERT_USER:
                 ws.cell(row=row_index, column=3, value=activities_type)
 
@@ -443,7 +456,13 @@ class ActivityViewSet(viewsets.ModelViewSet):
         requestId = request.user.id
         user = User.objects.filter(id=requestId).first()
 
-        activities = Activity.objects.filter(user=user).order_by('-created')
+        # Get the first day and last day of the current month
+        current_date = timezone.now()
+        first_day_of_month = current_date.replace(day=1)
+        last_day_of_month = (first_day_of_month + timezone.timedelta(days=32)).replace(day=1) - timezone.timedelta(days=1)
+
+        # Filter activities for the current month and order by activityDate
+        activities = Activity.objects.filter(user=user, activityDate__range=[first_day_of_month, last_day_of_month]).order_by('activityDate')
         serializer = ActivitySerializer(activities, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -474,10 +493,14 @@ class ActivityViewSet(viewsets.ModelViewSet):
         constants.EXPORT_ACTIVITY_COLUMNS += day_headers
         addition_headers = ["Dep NAT", "Invoiced"]
         constants.EXPORT_ACTIVITY_COLUMNS += addition_headers
-        
 
         # Create a new Excel workbook and add a worksheet
         wb = Workbook()
+
+        users = User.objects.all()
+        for user in users:
+            self.__add_cover_sheet__(wb, current_month_name, current_year, user, current_date, current_month)
+
         ws = wb.active
         ws.title = "TS"
 
@@ -494,36 +517,59 @@ class ActivityViewSet(viewsets.ModelViewSet):
             cell.font = font if column_title.isnumeric() else None
 
         user_rows = {}
-        for row_num, activity in enumerate(activities, 4):
-            if isinstance(activity.user_details, str):
-                user_details = json.loads(activity.user_details)
-            else:
-                user_details = activity.user_details
+        for user in users:
+            user_id = str(user.id)
+            user_rows[user_id] = {
+                'user_counter': len(user_rows) + 2,
+                'full_name': user.get_full_name(),
+                'company': user.get_company(),
+                'position': user.position,
+                'expert': user.get_expert(),
+                'grade': user.get_grade(),
+                'nat_group': user.get_natGroup(),
+                'invoiced': 'X',
+                'Cairo': '',
+                'Japan': '',
+                'Cairo %': '',
+                'Japan %': '',
+                'activities': {day: '' for day in range(1, last_day_of_month + 1)}
+            }
+            # Retrieve activities for the current user
+            user_activities = activities.filter(user=user)
+            for activity in user_activities:
+                day = activity.activityDate.day
+                activity_type = activity.get_activity_type()
+                user_rows[user_id]['activities'][day] = activity_type
+            # for row_num, activity in enumerate(activities, 4):
+        #     if isinstance(activity.user_details, str):
+        #         user_details = json.loads(activity.user_details)
+        #     else:
+        #         user_details = activity.user_details
 
-            user_id = str(user_details.get('id', ''))
+        #     user_id = str(user_details.get('id', ''))
 
-            if user_id not in user_rows:
-                # If the user row doesn't exist, create a new one
-                user_rows[user_id] = {
-                    'user_counter': row_num - 2,
-                    'full_name': user_details.get('fullName', ''),
-                    'company': user_details.get('company', ''),
-                    'position': user_details.get('position', ''),
-                    'expert': user_details.get('expert', ''),
-                    'grade': user_details.get('grade', ''),
-                    'nat_group': user_details.get('natGroup', ''),
-                    'invoiced': 'X',
-                    'Cairo': '',
-                    'Japan': '',
-                    'Cairo %': '',
-                    'Japan %': '',
-                    'activities': {day: '' for day in range(1, last_day_of_month + 1)}
-                }
-            # Update activity for the corresponding day
-            day = activity.activityDate.day
-            activity_type = activity.get_activityType_display()
-            user_rows[user_id]['activities'][day] = activity_type
-
+        #     if user_id not in user_rows:
+        #         # If the user row doesn't exist, create a new one
+        #         user_rows[user_id] = {
+        #             'user_counter': row_num - 2,
+        #             'full_name': user_details.get('fullName', ''),
+        #             'company': user_details.get('company', ''),
+        #             'position': user_details.get('position', ''),
+        #             'expert': user_details.get('expert', ''),
+        #             'grade': user_details.get('grade', ''),
+        #             'nat_group': user_details.get('natGroup', ''),
+        #             'invoiced': 'X',
+        #             'Cairo': '',
+        #             'Japan': '',
+        #             'Cairo %': '',
+        #             'Japan %': '',
+        #             'activities': {day: '' for day in range(1, last_day_of_month + 1)}
+        #         }
+        #     # Update activity for the corresponding day
+        #     day = activity.activityDate.day
+        #     activity_type = activity.get_activityType_display()
+        #     user_rows[user_id]['activities'][day] = activity_type
+        
         for user_id, user_data in user_rows.items():
             row_num = user_data['user_counter'] + 2
             ws.cell(row=row_num, column=1, value=row_num - 3).font = font  # Add userCounter
@@ -532,9 +578,8 @@ class ActivityViewSet(viewsets.ModelViewSet):
             ws.cell(row=row_num, column=4, value=str(user_data['position'])).font = font
             ws.cell(row=row_num, column=5, value=str(user_data['expert'])).font = font
             ws.cell(row=row_num, column=6, value=str(user_data['grade'])).font = font
-
-            ws.cell(row=row_num, column=7 + last_day_of_month + 5, value=user_data['nat_group']).font = font
-            ws.cell(row=row_num, column=7 + last_day_of_month + 6, value=user_data['invoiced']).font = font
+            ws.cell(row=row_num, column=7 + last_day_of_month + 5, value=str(user_data['nat_group'])).font = font
+            ws.cell(row=row_num, column=7 + last_day_of_month + 6, value=str(user_data['invoiced'])).font = font
 
             cairo_count = 0
             total_working_days_cairo = 0
@@ -550,9 +595,8 @@ class ActivityViewSet(viewsets.ModelViewSet):
                     japan_count += 1
                 if user_data['expert'] == 'LOC' and activity_type not in ['X', 'H', '']:
                     cairo_count += 1
-                
 
-                ws.cell(row=row_num, column=col + 11, value=activity_type).font = font
+                ws.cell(row=row_num, column=col + 11, value=str(activity_type)).font = font
                 if "C" in activity_type:
                     green_fill = PatternFill(start_color="A8D08D", end_color="A8D08D", fill_type="solid")
                     ws.cell(row=row_num, column=col + 11).fill = green_fill
@@ -565,7 +609,7 @@ class ActivityViewSet(viewsets.ModelViewSet):
                 if "J" in activity_type:
                     pink_fill = PatternFill(start_color="FCE4D6", end_color="FCE4D6", fill_type="solid")
                     ws.cell(row=row_num, column=col + 11).fill = pink_fill
-                    
+
             # Check if total_working_days_cairo is not zero before calculating the percentage
             cairo_percentage = round(cairo_count / total_working_days_cairo, 5) if total_working_days_cairo != 0 else 0
 
@@ -581,17 +625,10 @@ class ActivityViewSet(viewsets.ModelViewSet):
             ws.cell(row=row_num, column=7 + 4, value=japan_percentage).font = red_bold_italic_font
 
             user_details = user_data.get('user_details', {})
-           
 
             for cell in ws[row_num]:
                 cell.border = thin_border
             ws.freeze_panes = ws.cell(row=4, column=8)
-
-            # col = 12 + last_day_of_month
-            # ws.cell(row=row_num, column=col, value=str(user_details.get('natGroup', ''))).font = font
-            
-            # col += 1
-            # ws.cell(row=row_num, column=col, value="X").font = font
 
         for col_idx in range(12, 12 + last_day_of_month):
             column_letter = get_column_letter(col_idx)
@@ -656,6 +693,298 @@ class ActivityViewSet(viewsets.ModelViewSet):
 
         sheet.freeze_panes = sheet.cell(row=9, column=1)
 
+    def __format_cell__(self, cell, value, size=11, italic=False, center=True):
+        cell.value = value
+        cell.font = Font(size=size, italic=True)
+        if center:
+            cell.alignment = Alignment(horizontal='center', vertical='center')
+
+    def __add_cover_sheet__(self, wb, current_month_name, current_year, user, current_date, current_month):
+        # Create cover page
+        cover_ws = wb.create_sheet(title=str(user.get_full_name()))
+
+        cover_ws.merge_cells('A3:G3')
+        cover_ws['A3'].value = constants.COVER_TS_TEXT
+        cover_ws['A6'].font = Font(size=11)
+        cover_ws['A3'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
+
+        cover_ws.merge_cells('A6:G6')  # Adjust the cell range as needed
+        cover_ws['A6'].value = 'Monthly Time Sheet'
+        cover_ws['A6'].font = Font(size=16, italic=True)  # Set font size and make it italic
+        cover_ws['A6'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
+
+        cover_ws['A7'].value = 'Month:'
+        cover_ws.merge_cells('B7:C7')
+        cover_ws['B7'].value = current_month_name
+        cover_ws['B7'].font = Font(size=12, italic=True, bold=True)  # Set font size and make it italic
+        cover_ws['B7'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
+
+        # add the year
+        cover_ws['F7'].value = 'Year:'
+        cover_ws['G7'].value = current_year
+        cover_ws['G7'].font = Font(size=12, italic=True, bold=True)  # Set font size and make it italic
+        cover_ws['G7'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
+        cover_ws['F7'].font = Font(size=12, italic=True, bold=True)  # Set font size and make it italic
+        cover_ws['F7'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
+
+        # add the logo
+        script_directory = os.path.dirname(os.path.abspath(__file__))
+        logo_path = os.path.join(script_directory, 'static', 'images', 'logo.png')
+        img = Image(logo_path)
+        cover_ws.add_image(img, 'I2')
+
+        # add the name
+        cover_ws.merge_cells('B9:C9')
+        cover_ws['A9'].value = 'Name:'
+        cover_ws['B9'].value = str(user.get_full_name())
+
+        # add categories
+        # Create boxes and texts
+
+        user_grade = user.get_grade()
+
+        cover_ws['A11'].value = 'Category:'
+        cover_ws['D11'].value = 'A1'
+        cover_ws['F11'].value = 'A2'
+        cover_ws['H11'].value = 'A3'
+        cover_ws['D13'].value = 'B1'
+        cover_ws['F13'].value = 'B2'
+        cover_ws['H13'].value = 'B3'
+        cover_ws['D15'].value = 'B4'
+        cover_ws['F15'].value = 'B5'
+
+        # Mapping of grades to corresponding columns
+        grade_mapping = {
+            'A1': 'C',
+            'A2': 'E',
+            'A3': 'G',
+            'B1': 'C',
+            'B2': 'E',
+            'B3': 'G',
+            'B4': 'C',
+            'B5': 'E',
+        }
+
+        # Set the letter 'P' in the corresponding cell based on the user's grade
+        if user_grade in grade_mapping:
+            grade_column = grade_mapping[user_grade]
+            cell_address = f'{grade_column}11'
+            cover_ws[cell_address].value = 'P'
+            cover_ws[cell_address].alignment = Alignment(horizontal='center', vertical='center')
+
+        for col in ['C', 'E', 'G']:
+            cell_address = f'{col}11'
+            cover_ws[cell_address].border = Border(top=Side(style='thin', color='000000'), left=Side(style='thin', color='000000'),
+                                               right=Side(style='thin', color='000000'), bottom=Side(style='thin', color='000000'))
+        for col in ['C', 'E', 'G']:
+            cell_address = f'{col}13'
+            cover_ws[cell_address].border = Border(top=Side(style='thin', color='000000'), left=Side(style='thin', color='000000'),
+                                               right=Side(style='thin', color='000000'), bottom=Side(style='thin', color='000000'))
+        for col in ['C', 'E']:
+            cell_address = f'{col}15'
+            cover_ws[cell_address].border = Border(top=Side(style='thin', color='000000'), left=Side(style='thin', color='000000'),
+                                               right=Side(style='thin', color='000000'), bottom=Side(style='thin', color='000000'))
+
+        cover_ws['A18'].value = 'Nationality:'
+        cover_ws['A18'].font = Font(size=11, italic=True, bold=True)
+
+        cover_ws['D18'].value = 'Expatriate'
+        cover_ws['D18'].font = Font(size=10, bold=True)
+
+        cover_ws['F18'].value = 'Local'
+        cover_ws['F18'].font = Font(size=10, bold=True)
+
+        # Get the user's nationality
+        user_nationality = user.get_expert()
+
+        # Mapping of nationalities to corresponding columns
+        nationality_mapping = {
+            'EXP': 'C',  # Column for Expatriate
+            'LOC': 'E',  # Column for Local
+        }
+
+        # Set the letter 'P' in the corresponding cell and center it
+        if user_nationality in nationality_mapping:
+            nationality_column = nationality_mapping[user_nationality]
+            cell_address = f'{nationality_column}18'
+            cover_ws[cell_address].value = 'P'
+            cover_ws[cell_address].alignment = Alignment(horizontal='center', vertical='center')
+
+            # Apply border
+            cover_ws[cell_address].border = Border(top=Side(style='thin', color='000000'),
+                                                left=Side(style='thin', color='000000'),
+                                                right=Side(style='thin', color='000000'),
+                                                bottom=Side(style='thin', color='000000'))
+
+        for col in ['C', 'E']:
+            cell_address = f'{col}18'
+            cover_ws[cell_address].border = Border(top=Side(style='thin', color='000000'), left=Side(style='thin', color='000000'),
+                                               right=Side(style='thin', color='000000'), bottom=Side(style='thin', color='000000'))
+
+
+        cover_ws['A21'].value = 'Group Field:'
+        cover_ws['A21'].font = Font(size=11, italic=True, bold=True)
+
+        cover_ws.merge_cells('D21:E21')
+        cover_ws.merge_cells('H21:I21')
+
+        cover_ws['D21'].value = 'Management and SHQE'
+        cover_ws['D21'].font = Font(size=10)
+
+        cover_ws['H21'].value = 'Tender Evaluation and Contract Negotiation'
+        cover_ws['H21'].font = Font(size=10)
+
+        cover_ws.merge_cells('D23:E23')
+        cover_ws.merge_cells('H23:I23')
+
+        cover_ws['D23'].value = 'Construction Supervision'
+        cover_ws['D23'].font = Font(size=10)
+
+        cover_ws['H23'].value = 'O&M'
+        cover_ws['H23'].font = Font(size=10)
+
+        for col in ['C', 'G']:
+            cell_address = f'{col}21'
+            cover_ws[cell_address].border = Border(top=Side(style='thin', color='000000'), left=Side(style='thin', color='000000'),
+                                               right=Side(style='thin', color='000000'), bottom=Side(style='thin', color='000000'))
+        for col in ['C', 'G']:
+            cell_address = f'{col}23'
+            cover_ws[cell_address].border = Border(top=Side(style='thin', color='000000'), left=Side(style='thin', color='000000'),
+                                               right=Side(style='thin', color='000000'), bottom=Side(style='thin', color='000000'))
+
+        first_day_of_month = datetime(current_year, current_month, 1)
+        for i in range(1, 17):
+            col_address = chr(ord('C') + (i - 1))  # Alternating columns C and G
+            cell_address = f'{col_address}27'
+            day_of_week = (first_day_of_month + timedelta(days=i - 1)).strftime("%a")  # Get the abbreviated day name
+            cover_ws[cell_address].value = day_of_week
+        for i in range(1, 17):
+            col_address = chr(ord('C') + (i - 1))
+            cell_address = f'{col_address}28'
+            cover_ws[str(cell_address)].value = str((first_day_of_month + timedelta(days=i - 1)).day)
+        for i in range(1, 17):
+            col_address = chr(ord('C') + (i - 1))
+            cell_address_activity_type = f'{col_address}29'
+
+            # Replace 'activity_date' with the actual date for which you want to retrieve the activityType
+            activity_date = first_day_of_month + timedelta(days=i - 1)
+            activity_instance = Activity.objects.filter(user=user, activityDate=activity_date).first()
+
+            if activity_instance:
+                cover_ws[cell_address_activity_type].value = str(activity_instance.get_activity_type())
+            else:
+                cover_ws[cell_address_activity_type].value = None
+
+        first_day_of_second_half = datetime(current_year, current_month, 17).date()
+
+        # Write abbreviated weekdays in row 30 for the second half of the month
+        for i in range(0, calendar.monthrange(current_year, current_month)[1] - 16):
+            col_address = chr(ord('C') + i) + '30'
+            day_of_week = (first_day_of_second_half + timedelta(days=i)).strftime("%a")  # Get the abbreviated day name
+            cover_ws[col_address].value = day_of_week
+
+
+        # Continue writing the numeric values for the remaining days in the row below (row 30)
+        for i in range(17, calendar.monthrange(current_year, current_month)[1] + 1):
+            col_address = chr(ord('C') + (i - 17))
+            cell_address = f'{col_address}31'
+            cover_ws[cell_address].value = (first_day_of_month + timedelta(days=i - 1)).day
+
+        # Add the corresponding user activities in row 32
+        for i in range(17, calendar.monthrange(current_year, current_month)[1] + 1):
+            col_address_activity_type = chr(ord('C') + (i - 17)) + '32'
+
+            activity_date = datetime(current_year, current_month, 17) + timedelta(days=i - 17)
+            activity_instance = Activity.objects.filter(user=user, activityDate=activity_date).first()
+
+            if activity_instance:
+                cover_ws[col_address_activity_type].value = str(activity_instance.get_activity_type())
+            else:
+                cover_ws[col_address_activity_type].value = None
+
+        for row in range(36, 38):
+            for col_letter in ['C', 'D', 'F', 'G', 'I', 'J']:
+                cell = cover_ws[col_letter + str(row)]
+                cell.border = Border(
+                    left=Side(style='thin', color='000000' if col_letter != 'C' else '000000'),
+                    right=Side(style='thin', color='000000' if col_letter != 'J' else '000000'),
+                    top=Side(style='thin', color='000000'),
+                    bottom=Side(style='thin', color='000000')
+                )
+        # add summary for working days
+        cover_ws.merge_cells('C36:D36')
+        cover_ws['C36'].value = "No. of Days (NOD)*"
+        cover_ws['C36'].font = Font(size=11, bold=True)
+        cover_ws['C36'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
+        cover_ws['C36'].fill = PatternFill(start_color='C0C0C0', end_color='C0C0C0', fill_type='solid')
+
+        cover_ws.merge_cells('F36:G36')
+        cover_ws['F36'].value = "Total Calendar Days (TCD)"
+        cover_ws['F36'].font = Font(size=10, bold=True)
+        cover_ws['F36'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
+        cover_ws['F36'].fill = PatternFill(start_color='C0C0C0', end_color='C0C0C0', fill_type='solid')
+
+        cover_ws['C37'].value = "Japan"
+        cover_ws['C37'].font = Font(size=11, bold=True)
+        cover_ws['C37'].alignment = Alignment(horizontal='center', vertical='center')
+
+        cover_ws['D37'].value = "Cairo"
+        cover_ws['D37'].font = Font(size=11, bold=True)
+        cover_ws['D37'].alignment = Alignment(horizontal='center', vertical='center')
+
+
+        cover_ws['F37'].value = "Japan"
+        cover_ws['F37'].font = Font(size=11, bold=True)
+        cover_ws['F37'].alignment = Alignment(horizontal='center', vertical='center')
+
+        cover_ws['G37'].value = "Cairo"
+        cover_ws['G37'].font = Font(size=11, bold=True)
+        cover_ws['G37'].alignment = Alignment(horizontal='center', vertical='center')
+
+        cover_ws.merge_cells('I36:J36')
+        cover_ws['I36'].value = "Consumption NOD/TCD"
+        cover_ws['I36'].font = Font(size=11, bold=True)
+        cover_ws['I36'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
+        cover_ws['I36'].fill = PatternFill(start_color='C0C0C0', end_color='C0C0C0', fill_type='solid')
+
+        cover_ws['I37'].value = "Japan"
+        cover_ws['I37'].font = Font(size=11, bold=True)
+        cover_ws['I37'].alignment = Alignment(horizontal='center', vertical='center')
+
+        cover_ws['J37'].value = "Cairo"
+        cover_ws['J37'].font = Font(size=11, bold=True)
+        cover_ws['J37'].alignment = Alignment(horizontal='center', vertical='center')
+
+        # Project Director cell (B42)
+        self.__format_cell__(cover_ws['B42'], "Project Director")
+
+        # NAT Approval cell (L42)
+        self.__format_cell__(cover_ws['L42'], "NAT Approval")
+
+        for col_letter in range(ord('A'), ord('S')):
+            col_letter = chr(col_letter)
+            cell = cover_ws[col_letter + '45']
+            cell.border = Border(bottom=Side(style='thick'))
+
+        cover_ws.merge_cells('B47:D47')
+        cover_ws['B47'].value = "J = Working day In Japan"
+        cover_ws['B47'].font = Font(size=11, bold=True)
+
+        cover_ws.merge_cells('M47:O47')
+        cover_ws['M47'].value = "C = Working day In Cairo"
+        cover_ws['M47'].font = Font(size=11, bold=True)
+
+        cover_ws.merge_cells('B49:D49')
+        cover_ws['B49'].value = "H = Official Holiday In Cairo"
+        cover_ws['B49'].font = Font(size=11, bold=True)
+
+        cover_ws.merge_cells('M49:O49')
+        cover_ws['M49'].value = "X = Day off"
+        cover_ws['M49'].font = Font(size=11, bold=True)
+
+        cover_ws.merge_cells('B51:P51')
+        cover_ws['B51'].value = "Note: According to the contract 81/M the total days are working days in Cairo plus to official holiday in Egypt *NOD=C (Working day in Cairo)+H (Official Holiday in Egypt)"
+
     @action(detail=False, methods=['GET'])
     def export_all(self, request, *args, **kwargs):
         adminId = request.user.id
@@ -714,7 +1043,7 @@ class ActivityViewSet(viewsets.ModelViewSet):
         serializer.is_valid()
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        
+
         userActivity = serializer.validated_data.get('userActivity', None)
         activityType = serializer.validated_data.get('activityType', None)
         activityDate = serializer.validated_data.get('activityDate', None)
@@ -776,33 +1105,48 @@ class ActivityViewSet(viewsets.ModelViewSet):
 
         for user in users:
             start_date = date.replace(day=1)
-            end_date = (date.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
+            last_day_of_month = calendar.monthrange(date.year, date.month)[1]
+            end_date = date.replace(day=last_day_of_month)
 
             if user.expert == constants.EXPERT_USER:
                 total_working_days = np.busday_count(start_date, end_date, weekmask='0011111')
             elif user.expert == constants.LOCAL_USER:
-                total_working_days = np.busday_count(start_date, end_date, weekmask='1111110')
-            else:
-                total_working_days = 0
+                # Get the last day of the month
+                last_day_of_month = calendar.monthrange(date.year, date.month)[1]
+                end_date = date.replace(day=last_day_of_month) + timedelta(days=1)
+                total_working_days = np.busday_count(start_date, end_date, weekmask='1111111')
 
-            # Filter activities for the current user and month excluding 'H' type activities
-            activities = Activity.objects.filter(
-                user=user,
-                activityDate__month=date.month,
-                activityDate__year=date.year,
-            ).exclude(activityType=constants.HOLIDAY)
+                # Iterate through each day in the range
+                for day in range(1, last_day_of_month + 1):
+                    day_off = Activity.objects.filter(
+                        user=user,
+                        activityDate__day=day,
+                        activityDate__month=date.month,
+                        activityDate__year=date.year,
+                        activityType=constants.OFFDAY,
+                    ).exists()
 
-            # Count the number of activities
-            working_days = activities.count()
+                    if day_off and (day == 5 and day - 1 in (4, 6) and day + 1 in (4, 6)):
+                        total_working_days -= 1
 
-            # Append user data to the response
-            data.append({
-                'user__id': user.id,
-                'user__first_name': user.first_name,
-                'user__last_name': user.last_name,
-                'user__email': user.email,
-                'working_days': working_days,
-                'total_days': total_working_days,
-            })
+                # Filter activities for the current user and month excluding 'H' type activities
+                activities = Activity.objects.filter(
+                    user=user,
+                    activityDate__month=date.month,
+                    activityDate__year=date.year,
+                ).exclude(activityType=constants.HOLIDAY)
+
+                # Count the number of activities
+                working_days = activities.count()
+
+                # Append user data to the response
+                data.append({
+                    'user__id': user.id,
+                    'user__first_name': user.first_name,
+                    'user__last_name': user.last_name,
+                    'user__email': user.email,
+                    'working_days': working_days,
+                    'total_days': total_working_days,
+                })
 
         return Response(data, status=status.HTTP_200_OK)
