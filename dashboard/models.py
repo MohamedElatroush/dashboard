@@ -153,7 +153,7 @@ class Activity(TimeStampedModel):
             return working_days_count
         else:
             return 0
-
+    
     def save(self, *args, **kwargs):
         self.save_user_details()
         super().save(*args, **kwargs)

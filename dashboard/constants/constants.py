@@ -89,6 +89,10 @@ CANT_RESET_USER_PASSWORD_ERROR = {
     "detail": "Failed to reset password for that user"
 }
 
+ERR_NO_ACTIVITY_ID_FOUND = {
+    "detail": "Failed to edit activity with the provided ID"
+}
+
 # Define constants for column headers
 EXPORT_ACTIVITY_COLUMNS = ["#", "Name", "Source", "Position", "/", "Grade", "Group"]
 

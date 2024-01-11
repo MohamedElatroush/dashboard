@@ -1,8 +1,12 @@
 from .models import User, Activity
 from rest_framework.response import Response
 from rest_framework import status
-from .serializers import CreateUserSerializer, ListUsersSerializer, UserDeleteSerializer,\
-      ActivitySerializer, CreateActivitySerializer, MakeUserAdminSerializer, ChangePasswordSerializer, UserTimeSheetSerializer, EditUserSerializer, CalculateActivitySerializer
+from .serializers import CreateUserSerializer,\
+      ListUsersSerializer, UserDeleteSerializer,\
+      ActivitySerializer, CreateActivitySerializer,\
+    MakeUserAdminSerializer, ChangePasswordSerializer,\
+    UserTimeSheetSerializer, EditUserSerializer,\
+        CalculateActivitySerializer, EditActivitySerializer
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -328,7 +332,6 @@ class UserViewSet(viewsets.ModelViewSet):
 
         # get all the activities for that month by that user
         activities = Activity.objects.filter(created__month=date.month, created__year=date.year, user__id=user_id).order_by('-created')
-
         user = User.objects.get(id=user_id)
 
         dateFont = Font(size=16)
@@ -395,6 +398,11 @@ class UserViewSet(viewsets.ModelViewSet):
             start_column_letter = get_column_letter(4)  # Column D
             end_column_letter = get_column_letter(11)  # Adjust the last column letter as needed
             activities_column_range = f"{start_column_letter}{row_index}:{end_column_letter}{row_index}"
+
+            # Set the width of the columns
+            for col in ws.iter_cols(min_col=4, max_col=11, min_row=row_index, max_row=row_index):
+                for cell in col:
+                    ws.column_dimensions[cell.column_letter].width = 15  # Adjust the width as needed
 
             ws.merge_cells(activities_column_range)
 
@@ -569,7 +577,7 @@ class ActivityViewSet(viewsets.ModelViewSet):
         #     day = activity.activityDate.day
         #     activity_type = activity.get_activityType_display()
         #     user_rows[user_id]['activities'][day] = activity_type
-        
+
         for user_id, user_data in user_rows.items():
             row_num = user_data['user_counter'] + 2
             ws.cell(row=row_num, column=1, value=row_num - 3).font = font  # Add userCounter
@@ -701,6 +709,10 @@ class ActivityViewSet(viewsets.ModelViewSet):
 
     def __add_cover_sheet__(self, wb, current_month_name, current_year, user, current_date, current_month):
         # Create cover page
+        start_date = current_date.replace(day=1)
+        last_day_of_month = calendar.monthrange(current_date.year, current_date.month)[1]
+        end_date = current_date.replace(day=last_day_of_month)
+
         cover_ws = wb.create_sheet(title=str(user.get_full_name()))
 
         cover_ws.merge_cells('A3:G3')
@@ -918,6 +930,88 @@ class ActivityViewSet(viewsets.ModelViewSet):
         cover_ws['C36'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
         cover_ws['C36'].fill = PatternFill(start_color='C0C0C0', end_color='C0C0C0', fill_type='solid')
 
+        start_date = current_date.date().replace(day=1)
+        last_day_of_month = calendar.monthrange(current_date.date().year, current_date.date().month)[1]
+        end_date = current_date.date().replace(day=last_day_of_month)
+        total_working_days = np.busday_count(start_date, end_date, weekmask='0011111')
+        cover_ws['F38'].value = total_working_days
+        cover_ws['F38'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
+
+ 
+        # Assuming user is an instance of the User model
+        if user.expert == constants.LOCAL_USER:
+            start_date = current_date.date().replace(day=1)
+            last_day_of_month = calendar.monthrange(current_date.date().year, current_date.date().month)[1]
+            end_date = current_date.date().replace(day=last_day_of_month)
+
+            last_day_of_month = calendar.monthrange(current_date.date().year, current_date.date().month)[1]
+            end_date = current_date.date().replace(day=last_day_of_month) + timedelta(days=1)
+            total_working_days = np.busday_count(start_date, end_date, weekmask='1111111')
+            # Iterate through each day in the range
+            for day in range(1, last_day_of_month + 1):
+                day_off = Activity.objects.filter(
+                    user=user,
+                    activityDate__day=current_date.date().day,
+                    activityDate__month=current_date.date().month,
+                    activityDate__year=current_date.date().year,
+                    activityType=constants.OFFDAY,
+                ).exists()
+
+                if day_off and (day == 5 and day - 1 in (4, 6) and day + 1 in (4, 6)):
+                    total_working_days -= 1
+
+                # Filter activities for the current user and month excluding 'H' type activities
+                activities = Activity.objects.filter(
+                    user=user,
+                    activityDate__month=current_date.date().month,
+                    activityDate__year=current_date.date().year,
+                ).exclude(activityType=constants.OFFDAY)
+
+                # Count the number of activities
+                working_days = activities.count()
+                # Iterate over weeks in the month
+                for week in calendar.monthcalendar(current_date.year, current_date.month):
+                    for day in week:
+                        # Check if Thursday and Saturday are off-days in the current week
+                        if day != 0:  # Ignore days that belong to the previous or next month (represented as 0)
+                            thursday_offday = any(activity.activityType == constants.OFFDAY for activity in activities.filter(activityDate__day=day + 3))
+                            saturday_offday = any(activity.activityType == constants.OFFDAY for activity in activities.filter(activityDate__day=day + 5))
+
+                            # If either Thursday or Saturday is off-day, decrement working_days
+                            if thursday_offday or saturday_offday:
+                                working_days -= 1
+
+            # Add "0" under "Cairo" for local users
+            cover_ws['D38'].value = working_days
+            cover_ws['D38'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
+            cover_ws['G38'].value = total_working_days
+            cover_ws['G38'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
+
+            cover_ws['C38'].value = 0
+            cover_ws['C38'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
+
+        elif user.expert == constants.EXPERT_USER:
+            start_date = current_date.date().replace(day=1)
+            last_day_of_month = calendar.monthrange(current_date.date().year, current_date.date().month)[1]
+            end_date = current_date.date().replace(day=last_day_of_month)
+            total_working_days = np.busday_count(start_date, end_date, weekmask='0011111')
+
+            # Filter activities for the current user and month excluding 'H' type activities
+            activities = Activity.objects.filter(
+                user=user,
+                activityDate__month=current_date.date().month,
+                activityDate__year=current_date.date().year,
+            ).exclude(activityType=constants.OFFDAY)
+
+            # Count the number of activities
+            working_days = activities.count()
+
+            cover_ws['C38'].value = working_days
+            cover_ws['C38'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
+
+            cover_ws['D38'].value = 0
+            cover_ws['D38'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
+
         cover_ws.merge_cells('F36:G36')
         cover_ws['F36'].value = "Total Calendar Days (TCD)"
         cover_ws['F36'].font = Font(size=10, bold=True)
@@ -954,6 +1048,15 @@ class ActivityViewSet(viewsets.ModelViewSet):
         cover_ws['J37'].value = "Cairo"
         cover_ws['J37'].font = Font(size=11, bold=True)
         cover_ws['J37'].alignment = Alignment(horizontal='center', vertical='center')
+
+        cover_ws['I38'].value = round(cover_ws['C38'].value / cover_ws['F38'].value, 3)
+
+        cover_ws['I38'].font = Font(size=11)
+        cover_ws['I38'].alignment = Alignment(horizontal='center', vertical='center')
+
+        cover_ws['J38'].value = round(cover_ws['D38'].value / cover_ws['G38'].value, 3)
+        cover_ws['J38'].font = Font(size=11)
+        cover_ws['J38'].alignment = Alignment(horizontal='center', vertical='center')
 
         # Project Director cell (B42)
         self.__format_cell__(cover_ws['B42'], "Project Director")
@@ -1134,10 +1237,22 @@ class ActivityViewSet(viewsets.ModelViewSet):
                     user=user,
                     activityDate__month=date.month,
                     activityDate__year=date.year,
-                ).exclude(activityType=constants.HOLIDAY)
+                ).exclude(activityType=constants.OFFDAY)
 
                 # Count the number of activities
                 working_days = activities.count()
+
+                for week in calendar.monthcalendar(date.year, date.month):
+                    for day in week:
+                        # Check if Thursday and Saturday are off-days in the current week
+                        if day != 0:  # Ignore days that belong to the previous or next month (represented as 0)
+                            thursday_offday = any(activity.activityType == constants.OFFDAY for activity in activities.filter(activityDate__day=day + 3))
+                            saturday_offday = any(activity.activityType == constants.OFFDAY for activity in activities.filter(activityDate__day=day + 5))
+
+                            # If either Thursday or Saturday is off-day, decrement working_days
+                            if thursday_offday or saturday_offday:
+                                working_days -= 1
+                
 
                 # Append user data to the response
                 data.append({
@@ -1150,3 +1265,30 @@ class ActivityViewSet(viewsets.ModelViewSet):
                 })
 
         return Response(data, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=['PATCH'], url_path=r'edit_activity/(?P<activityId>\w+(?:-\w+)*)')
+    def edit_activity(self, request, *args, **kwargs):
+        serializer = EditActivitySerializer(data=request.data)
+        serializer.is_valid()
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        request_user_id = request.user.id
+        activityId = self.kwargs['activityId']
+
+        # Check if activity exists
+        activity = Activity.objects.filter(id=activityId).first()
+        if not activity:
+            return Response(constants.ERR_NO_ACTIVITY_ID_FOUND, status=status.HTTP_400_BAD_REQUEST)
+
+        # check if user editing is the owner of that activity
+        if activity.user.id != request_user_id:
+            return Response(constants.NOT_ALLOWED_TO_ACCESS, status=status.HTTP_400_BAD_REQUEST)
+
+        # Update the activity fields with the serializer data
+        activity.userActivity = serializer.validated_data.get('userActivity', activity.userActivity)
+        activity.activityType = serializer.validated_data.get('activityType', activity.activityType)
+        activity.activityDate = serializer.validated_data.get('activityDate', activity.activityDate)
+        activity.save()
+
+        return Response(status=status.HTTP_200_OK)

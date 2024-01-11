@@ -82,3 +82,8 @@ class UserTimeSheetSerializer(serializers.Serializer):
 
 class CalculateActivitySerializer(serializers.Serializer):
     date = serializers.DateField(default=date.today)
+
+class EditActivitySerializer(serializers.ModelSerializer):
+    class Meta:
+        model=Activity
+        fields=['userActivity', 'activityType', 'activityDate']
