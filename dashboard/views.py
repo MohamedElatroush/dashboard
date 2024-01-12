@@ -68,7 +68,6 @@ class UserRegistrationViewSet(viewsets.ViewSet):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class UserViewSet(viewsets.ModelViewSet):
-    # permission_classes=(IsAuthenticated,)
     queryset = User.objects.all()
 
     def get_serializer_class(self):
@@ -505,7 +504,7 @@ class ActivityViewSet(viewsets.ModelViewSet):
         # Create a new Excel workbook and add a worksheet
         wb = Workbook()
 
-        users = User.objects.all()
+        # Create individual timesheet for every user
         for user in users:
             self.__add_cover_sheet__(wb, current_month_name, current_year, user, current_date, current_month)
 
@@ -548,35 +547,6 @@ class ActivityViewSet(viewsets.ModelViewSet):
                 day = activity.activityDate.day
                 activity_type = activity.get_activity_type()
                 user_rows[user_id]['activities'][day] = activity_type
-            # for row_num, activity in enumerate(activities, 4):
-        #     if isinstance(activity.user_details, str):
-        #         user_details = json.loads(activity.user_details)
-        #     else:
-        #         user_details = activity.user_details
-
-        #     user_id = str(user_details.get('id', ''))
-
-        #     if user_id not in user_rows:
-        #         # If the user row doesn't exist, create a new one
-        #         user_rows[user_id] = {
-        #             'user_counter': row_num - 2,
-        #             'full_name': user_details.get('fullName', ''),
-        #             'company': user_details.get('company', ''),
-        #             'position': user_details.get('position', ''),
-        #             'expert': user_details.get('expert', ''),
-        #             'grade': user_details.get('grade', ''),
-        #             'nat_group': user_details.get('natGroup', ''),
-        #             'invoiced': 'X',
-        #             'Cairo': '',
-        #             'Japan': '',
-        #             'Cairo %': '',
-        #             'Japan %': '',
-        #             'activities': {day: '' for day in range(1, last_day_of_month + 1)}
-        #         }
-        #     # Update activity for the corresponding day
-        #     day = activity.activityDate.day
-        #     activity_type = activity.get_activityType_display()
-        #     user_rows[user_id]['activities'][day] = activity_type
 
         for user_id, user_data in user_rows.items():
             row_num = user_data['user_counter'] + 2
@@ -706,6 +676,132 @@ class ActivityViewSet(viewsets.ModelViewSet):
         cell.font = Font(size=size, italic=True)
         if center:
             cell.alignment = Alignment(horizontal='center', vertical='center')
+
+    def __add_local_working_days__(self, current_date, user, cover_ws):
+        ##### EXPERT #####
+        start_date = current_date.date().replace(day=1)
+        last_day_of_month = calendar.monthrange(current_date.date().year, current_date.date().month)[1]
+        end_date = (current_date.date() + timedelta(days=last_day_of_month)).replace(day=1)
+
+        # Adjust end_date to the next day
+        end_date = end_date + timedelta(days=1)
+
+        total_working_days_expert = np.busday_count(start_date, end_date, weekmask='0011111')
+        cover_ws['F38'].value = total_working_days_expert
+        cover_ws['F38'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
+        ##### EXPERT #####
+
+        start_date = current_date.date().replace(day=1)
+        last_day_of_month = calendar.monthrange(current_date.date().year, current_date.date().month)[1]
+        end_date = current_date.date().replace(day=last_day_of_month)
+
+        last_day_of_month = calendar.monthrange(current_date.date().year, current_date.date().month)[1]
+        end_date = current_date.date().replace(day=last_day_of_month) + timedelta(days=1)
+        total_working_days = np.busday_count(start_date, end_date, weekmask='1111111')
+        # Iterate through each day in the range
+        for day in range(1, last_day_of_month + 1):
+            day_off = Activity.objects.filter(
+                user=user,
+                activityDate__day=current_date.date().day,
+                activityDate__month=current_date.date().month,
+                activityDate__year=current_date.date().year,
+                activityType=constants.OFFDAY,
+            ).exists()
+
+            if day_off and (day == 5 and day - 1 in (4, 6) and day + 1 in (4, 6)):
+                total_working_days -= 1
+
+            # Filter activities for the current user and month excluding 'H' type activities
+            activities = Activity.objects.filter(
+                user=user,
+                activityDate__month=current_date.date().month,
+                activityDate__year=current_date.date().year,
+            ).exclude(activityType=constants.OFFDAY)
+
+            # Count the number of activities
+            working_days = activities.count()
+            # Iterate over weeks in the month
+            for week in calendar.monthcalendar(current_date.year, current_date.month):
+                for day in week:
+                    # Check if Thursday and Saturday are off-days in the current week
+                    if day != 0:  # Ignore days that belong to the previous or next month (represented as 0)
+                        thursday_offday = any(activity.activityType == constants.OFFDAY for activity in activities.filter(activityDate__day=day + 3))
+                        saturday_offday = any(activity.activityType == constants.OFFDAY for activity in activities.filter(activityDate__day=day + 5))
+
+                        # If either Thursday or Saturday is off-day, decrement working_days
+                        if thursday_offday or saturday_offday:
+                            working_days -= 1
+
+        # Add "0" under "Cairo" for local users
+        cover_ws['D38'].value = working_days
+        cover_ws['D38'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
+        cover_ws['G38'].value = total_working_days
+        cover_ws['G38'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
+
+        cover_ws['C38'].value = 0
+        cover_ws['C38'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
+
+        cover_ws['J38'].value = round(cover_ws['D38'].value / cover_ws['G38'].value, 3)
+        cover_ws['J38'].font = Font(size=11)
+        cover_ws['J38'].alignment = Alignment(horizontal='center', vertical='center')
+
+         # Japan NOD/TCD
+        cover_ws['I38'].value = round(cover_ws['C38'].value / cover_ws['F38'].value, 3)
+        cover_ws['I38'].font = Font(size=11)
+        cover_ws['I38'].alignment = Alignment(horizontal='center', vertical='center')
+
+    def __add_expert_working_days__(self, current_date, user, cover_ws):
+        ###### LOCAL ######
+        start_date = current_date.date().replace(day=1)
+        last_day_of_month = calendar.monthrange(current_date.date().year, current_date.date().month)[1]
+        end_date = current_date.date().replace(day=last_day_of_month)
+
+        last_day_of_month = calendar.monthrange(current_date.date().year, current_date.date().month)[1]
+        end_date = current_date.date().replace(day=last_day_of_month) + timedelta(days=1)
+        total_working_days_cairo = np.busday_count(start_date, end_date, weekmask='1111111')
+         ###### LOCAL ######
+        
+        start_date = current_date.date().replace(day=1)
+        last_day_of_month = calendar.monthrange(current_date.date().year, current_date.date().month)[1]
+        end_date = (current_date.date() + timedelta(days=last_day_of_month)).replace(day=1)
+
+        # Adjust end_date to the next day
+        end_date = end_date + timedelta(days=1)
+        total_working_days = np.busday_count(start_date, end_date, weekmask='0011111')
+
+        # Filter activities for the current user and month excluding 'H' type activities
+        activities = Activity.objects.filter(
+            user=user,
+            activityDate__month=current_date.date().month,
+            activityDate__year=current_date.date().year,
+        ).exclude(activityType=constants.OFFDAY)
+
+        # Count the number of activities
+        working_days = activities.count()
+
+        cover_ws['C38'].value = working_days
+        cover_ws['C38'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
+
+        cover_ws['F38'].value = total_working_days
+        cover_ws['F38'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
+
+        # Cairo NOD
+        cover_ws['D38'].value = 0
+        cover_ws['D38'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
+
+        # Cairo TCD
+        cover_ws['G38'].value = total_working_days_cairo
+        cover_ws['G38'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
+
+        # Japan NOD/TCD
+        cover_ws['I38'].value = round(cover_ws['C38'].value / cover_ws['F38'].value, 3)
+        cover_ws['I38'].font = Font(size=11)
+        cover_ws['I38'].alignment = Alignment(horizontal='center', vertical='center')
+
+        # Cairo NOD/TCD
+        cover_ws['J38'].value = 0
+        cover_ws['J38'].font = Font(size=11)
+        cover_ws['J38'].alignment = Alignment(horizontal='center', vertical='center')
 
     def __add_cover_sheet__(self, wb, current_month_name, current_year, user, current_date, current_month):
         # Create cover page
@@ -937,80 +1033,11 @@ class ActivityViewSet(viewsets.ModelViewSet):
         cover_ws['F38'].value = total_working_days
         cover_ws['F38'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
 
- 
         # Assuming user is an instance of the User model
         if user.expert == constants.LOCAL_USER:
-            start_date = current_date.date().replace(day=1)
-            last_day_of_month = calendar.monthrange(current_date.date().year, current_date.date().month)[1]
-            end_date = current_date.date().replace(day=last_day_of_month)
-
-            last_day_of_month = calendar.monthrange(current_date.date().year, current_date.date().month)[1]
-            end_date = current_date.date().replace(day=last_day_of_month) + timedelta(days=1)
-            total_working_days = np.busday_count(start_date, end_date, weekmask='1111111')
-            # Iterate through each day in the range
-            for day in range(1, last_day_of_month + 1):
-                day_off = Activity.objects.filter(
-                    user=user,
-                    activityDate__day=current_date.date().day,
-                    activityDate__month=current_date.date().month,
-                    activityDate__year=current_date.date().year,
-                    activityType=constants.OFFDAY,
-                ).exists()
-
-                if day_off and (day == 5 and day - 1 in (4, 6) and day + 1 in (4, 6)):
-                    total_working_days -= 1
-
-                # Filter activities for the current user and month excluding 'H' type activities
-                activities = Activity.objects.filter(
-                    user=user,
-                    activityDate__month=current_date.date().month,
-                    activityDate__year=current_date.date().year,
-                ).exclude(activityType=constants.OFFDAY)
-
-                # Count the number of activities
-                working_days = activities.count()
-                # Iterate over weeks in the month
-                for week in calendar.monthcalendar(current_date.year, current_date.month):
-                    for day in week:
-                        # Check if Thursday and Saturday are off-days in the current week
-                        if day != 0:  # Ignore days that belong to the previous or next month (represented as 0)
-                            thursday_offday = any(activity.activityType == constants.OFFDAY for activity in activities.filter(activityDate__day=day + 3))
-                            saturday_offday = any(activity.activityType == constants.OFFDAY for activity in activities.filter(activityDate__day=day + 5))
-
-                            # If either Thursday or Saturday is off-day, decrement working_days
-                            if thursday_offday or saturday_offday:
-                                working_days -= 1
-
-            # Add "0" under "Cairo" for local users
-            cover_ws['D38'].value = working_days
-            cover_ws['D38'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
-            cover_ws['G38'].value = total_working_days
-            cover_ws['G38'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
-
-            cover_ws['C38'].value = 0
-            cover_ws['C38'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
-
+            self.__add_local_working_days__(current_date, user, cover_ws)
         elif user.expert == constants.EXPERT_USER:
-            start_date = current_date.date().replace(day=1)
-            last_day_of_month = calendar.monthrange(current_date.date().year, current_date.date().month)[1]
-            end_date = current_date.date().replace(day=last_day_of_month)
-            total_working_days = np.busday_count(start_date, end_date, weekmask='0011111')
-
-            # Filter activities for the current user and month excluding 'H' type activities
-            activities = Activity.objects.filter(
-                user=user,
-                activityDate__month=current_date.date().month,
-                activityDate__year=current_date.date().year,
-            ).exclude(activityType=constants.OFFDAY)
-
-            # Count the number of activities
-            working_days = activities.count()
-
-            cover_ws['C38'].value = working_days
-            cover_ws['C38'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
-
-            cover_ws['D38'].value = 0
-            cover_ws['D38'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
+            self.__add_expert_working_days__(current_date, user, cover_ws)
 
         cover_ws.merge_cells('F36:G36')
         cover_ws['F36'].value = "Total Calendar Days (TCD)"
@@ -1049,15 +1076,6 @@ class ActivityViewSet(viewsets.ModelViewSet):
         cover_ws['J37'].font = Font(size=11, bold=True)
         cover_ws['J37'].alignment = Alignment(horizontal='center', vertical='center')
 
-        cover_ws['I38'].value = round(cover_ws['C38'].value / cover_ws['F38'].value, 3)
-
-        cover_ws['I38'].font = Font(size=11)
-        cover_ws['I38'].alignment = Alignment(horizontal='center', vertical='center')
-
-        cover_ws['J38'].value = round(cover_ws['D38'].value / cover_ws['G38'].value, 3)
-        cover_ws['J38'].font = Font(size=11)
-        cover_ws['J38'].alignment = Alignment(horizontal='center', vertical='center')
-
         # Project Director cell (B42)
         self.__format_cell__(cover_ws['B42'], "Project Director")
 
@@ -1090,45 +1108,46 @@ class ActivityViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['GET'])
     def export_all(self, request, *args, **kwargs):
-        adminId = request.user.id
-        userObj = User.objects.filter(id=adminId).first()
-
-        if not (userObj.is_superuser or userObj.isAdmin):
+        user = request.user
+        if not (user.is_superuser or user.isAdmin):
             return Response(constants.NOT_ALLOWED_TO_ACCESS, status=status.HTTP_400_BAD_REQUEST)
 
-        # Get the date parameter from the query parameters
-        date_param = request.query_params.get('date', None)
-        company_param = request.query_params.get('company', None)
-        department_param = request.query_params.get('department', None)
+        # Get the date, company, and department parameters from the query parameters
+        date_param = request.query_params.get('date', date.today().strftime('%Y-%m-%d'))
+        company_param = request.query_params.get('company')
+        department_param = unquote(request.query_params.get('department', ''))
 
-        if company_param is not None:
-            try:
+        company_param_int = None
+        try:
+            if company_param is not None:
                 company_param_int = int(company_param)
                 selected_company = dict(constants.COMPANY_CHOICES).get(company_param_int)
                 if selected_company is None:
                     return Response({'detail': 'Invalid company parameter.'}, status=status.HTTP_400_BAD_REQUEST)
-            except ValueError:
-                return Response({'detail': 'Invalid company parameter. Must be an integer.'}, status=status.HTTP_400_BAD_REQUEST)
-        else:
-            selected_company = None
+            else:
+                selected_company = None
+        except ValueError:
+            return Response({'detail': 'Invalid company parameter. Must be an integer.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        if date_param:
-            try:
-                selected_date = datetime.strptime(date_param, '%Y-%m-%d').date()
-            except ValueError:
-                return Response({'detail': 'Invalid date format. Please use YYYY-MM-DD format.'}, status=status.HTTP_400_BAD_REQUEST)
-        else:
-            selected_date = date.today()
+        try:
+            selected_date = datetime.strptime(date_param, '%Y-%m-%d').date()
+        except ValueError:
+            return Response({'detail': 'Invalid date format. Please use YYYY-MM-DD format.'}, status=status.HTTP_400_BAD_REQUEST)
+
         users = User.objects.all()
+        activities = Activity.objects.all()
 
-        if selected_company==None:
-            activities = Activity.objects.all()
-        else:
-            activities = Activity.objects.filter(user_details__company=str(selected_company))
+        if company_param_int is not None:
+            users = users.filter(company=company_param_int)
+            # activities = activities.filter(user_details__company=str(selected_company))
 
         if department_param:
-            department_param = unquote(department_param)
-            activities = activities.filter(user_details__department=str(department_param))
+        #     print('here\n\n')
+        #     department_param = unquote(department_param)
+            users = users.filter(department=department_param)
+            print(users)
+            # activities = activities.filter(user_details__department=str(department_param))
+
         response = self._create_activity_excel_report(users, activities, selected_date)
         return response
 
@@ -1212,7 +1231,24 @@ class ActivityViewSet(viewsets.ModelViewSet):
             end_date = date.replace(day=last_day_of_month)
 
             if user.expert == constants.EXPERT_USER:
+                start_date = date.replace(day=1)
+                last_day_of_month = calendar.monthrange(date.year, date.month)[1]
+                end_date = (date + timedelta(days=last_day_of_month)).replace(day=1)
+
+                # Adjust end_date to the next day
+                end_date = end_date + timedelta(days=1)
+
                 total_working_days = np.busday_count(start_date, end_date, weekmask='0011111')
+
+                # Filter activities for the current user and month excluding 'H' type activities
+                activities = Activity.objects.filter(
+                    user=user,
+                    activityDate__month=date.month,
+                    activityDate__year=date.year,
+                ).exclude(activityType=constants.OFFDAY)
+
+                # Count the number of activities
+                working_days = activities.count()
             elif user.expert == constants.LOCAL_USER:
                 # Get the last day of the month
                 last_day_of_month = calendar.monthrange(date.year, date.month)[1]
@@ -1252,17 +1288,15 @@ class ActivityViewSet(viewsets.ModelViewSet):
                             # If either Thursday or Saturday is off-day, decrement working_days
                             if thursday_offday or saturday_offday:
                                 working_days -= 1
-                
-
-                # Append user data to the response
-                data.append({
-                    'user__id': user.id,
-                    'user__first_name': user.first_name,
-                    'user__last_name': user.last_name,
-                    'user__email': user.email,
-                    'working_days': working_days,
-                    'total_days': total_working_days,
-                })
+            # Append user data to the response
+            data.append({
+                'user__id': user.id,
+                'user__first_name': user.first_name,
+                'user__last_name': user.last_name,
+                'user__email': user.email,
+                'working_days': working_days,
+                'total_days': total_working_days,
+            })
 
         return Response(data, status=status.HTTP_200_OK)
 
