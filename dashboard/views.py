@@ -414,14 +414,8 @@ class UserViewSet(viewsets.ModelViewSet):
             start_column_letter = get_column_letter(2)  # Column B
             end_column_letter = get_column_letter(2)
 
-            if user.expert == constants.LOCAL_USER:
-                if activities_type == "J":
-                    ws.cell(row=row_index, column=3, value=activities_type)
-                else:
-                    ws.cell(row=row_index, column=2, value=activities_type)
-            elif user.expert == constants.EXPERT_USER:
-                ws.cell(row=row_index, column=3, value=activities_type)
-
+            if user.expert in [constants.LOCAL_USER, constants.EXPERT_USER]:
+                ws.cell(row=row_index, column=3 if activities_type == "J" else 2, value=activities_type)
 
         excel_data = BytesIO()
         wb.save(excel_data)
@@ -608,10 +602,12 @@ class ActivityViewSet(viewsets.ModelViewSet):
                 cell.border = thin_border
             ws.freeze_panes = ws.cell(row=4, column=8)
 
+        # Create AutoFilter for all columns starting from row 2
+        ws.auto_filter.ref = f'A2:{get_column_letter(ws.max_column)}{ws.max_row}'
+
         for col_idx in range(12, 12 + last_day_of_month):
             column_letter = get_column_letter(col_idx)
             ws.column_dimensions[column_letter].width = 3
-
         # Create sheets for each Dep NAT
         dep_nats = list(set(user.get_natGroup() for user in users if user.get_natGroup() is not None))
         for dep_nat in dep_nats:
@@ -1145,7 +1141,6 @@ class ActivityViewSet(viewsets.ModelViewSet):
         #     print('here\n\n')
         #     department_param = unquote(department_param)
             users = users.filter(department=department_param)
-            print(users)
             # activities = activities.filter(user_details__department=str(department_param))
 
         response = self._create_activity_excel_report(users, activities, selected_date)
