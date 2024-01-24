@@ -466,6 +466,102 @@ class ActivityViewSet(viewsets.ModelViewSet):
         activities = Activity.objects.filter(user=user, activityDate__range=[first_day_of_month, last_day_of_month]).order_by('activityDate')
         serializer = ActivitySerializer(activities, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    def __add_daily_activities_sheet__(self, wb, current_date, user):
+        # Extract month and year
+        month = current_date.month
+        year = current_date.year
+
+        # get all the activities for that month by that user
+        activities = Activity.objects.filter(created__month=month, created__year=year, user__id=user.id).order_by('-created')
+        user = User.objects.get(id=user.id)
+
+        daily_activities = wb.create_sheet(title=str(user.get_full_name()) + " (DA)")
+
+        dateFont = Font(size=16)
+    #     wb = Workbook()
+
+    #     ws = wb.active
+    #     ws.title = "User Timesheet"
+
+        name_year_month_border = Border(
+        left=Side(border_style='thin'),
+        right=Side(border_style='thin'),
+        top=Side(border_style='thin'),
+        bottom=Side(border_style='thin')
+    )
+
+       # Write the month and year headers at the top
+        daily_activities.cell(row=1, column=1, value="Year")
+        daily_activities.cell(row=1, column=1).border = name_year_month_border
+
+        daily_activities.cell(row=1, column=2, value=year)
+        daily_activities.cell(row=1, column=2).border = name_year_month_border
+
+        daily_activities.cell(row=2, column=1, value="Month")
+        daily_activities.cell(row=2, column=1).border = name_year_month_border
+        daily_activities.cell(row=2, column=2, value=month)
+        daily_activities.cell(row=2, column=2).border = name_year_month_border
+        daily_activities.cell(row=1, column=1).font = dateFont  # Apply the font settings
+        daily_activities.cell(row=1, column=2).font = dateFont  # Apply the font settings
+        daily_activities.cell(row=2, column=1).font = dateFont  # Apply the font settings
+        daily_activities.cell(row=2, column=2).font = dateFont  # Apply the font settings
+
+        daily_activities.cell(row=1, column=7, value=user.get_full_name())
+        daily_activities.cell(row=1, column=7).font = dateFont
+        daily_activities.cell(row=1, column=7).border = name_year_month_border
+
+        daily_activities.cell(row=2, column=7, value=user.department)
+        daily_activities.cell(row=2, column=7).font = dateFont
+        daily_activities.cell(row=2, column=7).border = name_year_month_border
+
+        # Create headers for columns
+        daily_activities.cell(row=4, column=1, value="Day").font = dateFont
+        daily_activities.cell(row=4, column=1).border = name_year_month_border
+        daily_activities.cell(row=4, column=2, value="Cairo").font = dateFont
+        daily_activities.cell(row=4, column=2).border = name_year_month_border
+        daily_activities.cell(row=4, column=3, value="Japan").font = dateFont
+        daily_activities.cell(row=4, column=3).border = name_year_month_border
+        daily_activities.cell(row=4, column=4, value="Daily Activities").font = dateFont
+        daily_activities.cell(row=4, column=4).border = name_year_month_border
+
+        script_directory = os.path.dirname(os.path.abspath(__file__))
+        logo_path = os.path.join(script_directory, 'static', 'images', 'logo.png')
+        img = Image(logo_path)
+        daily_activities.add_image(img, 'P1')
+
+        for day in range(1, calendar.monthrange(year, month)[1] + 1):
+            row_index = day + 4  # Offset by 4 to account for existing rows
+            daily_activities.cell(row=row_index, column=1, value=f"{day:02d}").font = dateFont
+            daily_activities.cell(row=row_index, column=1).alignment = Alignment(horizontal='center')
+            activities_for_day = activities.filter(activityDate__day=day)
+            # Display activities for the day in the second column
+            activities_text = "\n".join([activity.userActivity or '' for activity in activities_for_day])
+
+            # Merge cells for the "Activities" column
+            start_column_letter = get_column_letter(4)  # Column D
+            end_column_letter = get_column_letter(11)  # Adjust the last column letter as needed
+            activities_column_range = f"{start_column_letter}{row_index}:{end_column_letter}{row_index}"
+
+            # Set the width of the columns
+            for col in daily_activities.iter_cols(min_col=4, max_col=11, min_row=row_index, max_row=row_index):
+                for cell in col:
+                    daily_activities.column_dimensions[cell.column_letter].width = 15  # Adjust the width as needed
+
+            daily_activities.merge_cells(activities_column_range)
+
+            daily_activities[start_column_letter + str(row_index)].alignment = Alignment(wrap_text=True)
+
+            daily_activities.cell(row=row_index, column=4, value=activities_text)
+
+            activities_type = "\n".join([str(activity.get_activity_type()) for activity in activities_for_day])
+
+            start_column_letter = get_column_letter(2)  # Column B
+            end_column_letter = get_column_letter(2)
+
+            if user.expert in [constants.LOCAL_USER, constants.EXPERT_USER]:
+                daily_activities.cell(row=row_index, column=3 if activities_type == "J" else 2, value=activities_type)
+
 
     def _create_activity_excel_report(self, users, activities, selected_date):
         current_date = datetime.now()
@@ -501,6 +597,7 @@ class ActivityViewSet(viewsets.ModelViewSet):
         # Create individual timesheet for every user
         for user in users:
             self.__add_cover_sheet__(wb, current_month_name, current_year, user, current_date, current_month)
+            self.__add_daily_activities_sheet__(wb, current_date, user)
 
         ws = wb.active
         ws.title = "TS"
@@ -1138,11 +1235,9 @@ class ActivityViewSet(viewsets.ModelViewSet):
             # activities = activities.filter(user_details__company=str(selected_company))
 
         if department_param:
-        #     print('here\n\n')
         #     department_param = unquote(department_param)
             users = users.filter(department=department_param)
             # activities = activities.filter(user_details__department=str(department_param))
-
         response = self._create_activity_excel_report(users, activities, selected_date)
         return response
 
