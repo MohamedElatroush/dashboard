@@ -30,10 +30,10 @@ from openpyxl.drawing.image import Image
 import os
 import calendar
 import numpy as np
-import json
 from urllib.parse import unquote
 from django.utils import timezone
 import calendar
+from collections import defaultdict
 
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     @classmethod
@@ -479,10 +479,6 @@ class ActivityViewSet(viewsets.ModelViewSet):
         daily_activities = wb.create_sheet(title=str(user.get_full_name()) + " (DA)")
 
         dateFont = Font(size=16)
-    #     wb = Workbook()
-
-    #     ws = wb.active
-    #     ws.title = "User Timesheet"
 
         name_year_month_border = Border(
         left=Side(border_style='thin'),
@@ -614,30 +610,37 @@ class ActivityViewSet(viewsets.ModelViewSet):
             cell.alignment = Alignment(horizontal="center")
             cell.font = font if column_title.isnumeric() else None
 
+        # Initialize a counter variable for rows
+        current_row = 2
+        # Use a defaultdict for activities
+        default_activities = {day: '' for day in range(1, last_day_of_month + 1)}
+
         user_rows = {}
         for user in users:
             user_id = str(user.id)
-            user_rows[user_id] = {
-                'user_counter': len(user_rows) + 2,
-                'full_name': user.get_full_name(),
-                'company': user.get_company(),
-                'position': user.position,
-                'expert': user.get_expert(),
-                'grade': user.get_grade(),
-                'nat_group': user.get_natGroup(),
-                'invoiced': 'X',
-                'Cairo': '',
-                'Japan': '',
-                'Cairo %': '',
-                'Japan %': '',
-                'activities': {day: '' for day in range(1, last_day_of_month + 1)}
-            }
+            user_row = user_rows[user_id] = {
+            'user_counter': current_row,
+            'full_name': user.get_full_name(),
+            'company': user.get_company(),
+            'position': user.position,
+            'expert': user.get_expert(),
+            'grade': user.get_grade(),
+            'nat_group': user.get_natGroup(),
+            'invoiced': 'X',
+            'Cairo': '',
+            'Japan': '',
+            'Cairo %': '',
+            'Japan %': '',
+            'activities': defaultdict(str, default_activities.copy())
+        }
             # Retrieve activities for the current user
             user_activities = activities.filter(user=user)
             for activity in user_activities:
                 day = activity.activityDate.day
                 activity_type = activity.get_activity_type()
-                user_rows[user_id]['activities'][day] = activity_type
+                user_row['activities'][day] = activity_type
+
+            current_row += 1
 
         for user_id, user_data in user_rows.items():
             row_num = user_data['user_counter'] + 2
@@ -896,6 +899,14 @@ class ActivityViewSet(viewsets.ModelViewSet):
         cover_ws['J38'].font = Font(size=11)
         cover_ws['J38'].alignment = Alignment(horizontal='center', vertical='center')
 
+    def set_borders(self, ws, row, columns):
+        for col in columns:
+            cell_address = f'{col}{row}'
+            ws[cell_address].border = Border(top=Side(style='thin', color='000000'),
+                                            left=Side(style='thin', color='000000'),
+                                            right=Side(style='thin', color='000000'),
+                                            bottom=Side(style='thin', color='000000'))
+
     def __add_cover_sheet__(self, wb, current_month_name, current_year, user, current_date, current_month):
         # Create cover page
         start_date = current_date.replace(day=1)
@@ -939,9 +950,6 @@ class ActivityViewSet(viewsets.ModelViewSet):
         cover_ws['A9'].value = 'Name:'
         cover_ws['B9'].value = str(user.get_full_name())
 
-        # add categories
-        # Create boxes and texts
-
         user_grade = user.get_grade()
 
         cover_ws['A11'].value = 'Category:'
@@ -972,6 +980,11 @@ class ActivityViewSet(viewsets.ModelViewSet):
             cell_address = f'{grade_column}11'
             cover_ws[cell_address].value = 'P'
             cover_ws[cell_address].alignment = Alignment(horizontal='center', vertical='center')
+        
+        # Set borders for various cells
+        self.set_borders(cover_ws, 11, ['C', 'E', 'G'])
+        self.set_borders(cover_ws, 13, ['C', 'E', 'G'])
+        self.set_borders(cover_ws, 15, ['C', 'E'])
 
         for col in ['C', 'E', 'G']:
             cell_address = f'{col}11'
@@ -1059,11 +1072,11 @@ class ActivityViewSet(viewsets.ModelViewSet):
             cell_address = f'{col_address}27'
             day_of_week = (first_day_of_month + timedelta(days=i - 1)).strftime("%a")  # Get the abbreviated day name
             cover_ws[cell_address].value = day_of_week
-        for i in range(1, 17):
+
             col_address = chr(ord('C') + (i - 1))
             cell_address = f'{col_address}28'
             cover_ws[str(cell_address)].value = str((first_day_of_month + timedelta(days=i - 1)).day)
-        for i in range(1, 17):
+
             col_address = chr(ord('C') + (i - 1))
             cell_address_activity_type = f'{col_address}29'
 
