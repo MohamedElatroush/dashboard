@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User, Activity
+from .models import User, Activity, ActivityFile
 from .constants import constants
 from gettext import gettext as _
 from datetime import date
@@ -87,3 +87,8 @@ class EditActivitySerializer(serializers.ModelSerializer):
     class Meta:
         model=Activity
         fields=['userActivity', 'activityType', 'activityDate']
+
+class ActivityFileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ActivityFile
+        fields = ('file', 'created')

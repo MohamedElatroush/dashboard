@@ -12,7 +12,7 @@ router = routers.DefaultRouter()
 # define the router path and viewset to be used
 router.register(r'user', UserViewSet, basename='user')
 router.register(r'activity', ActivityViewSet, basename='activity')
-
+router.register(r'files', LatestFileView, basename='files')
 
 urlpatterns = [
      path('', include(router.urls)),

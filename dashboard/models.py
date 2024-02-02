@@ -7,6 +7,7 @@ from django.db.models.signals import post_delete
 from django.dispatch import receiver
 from django.utils import timezone
 from datetime import datetime, timedelta
+from django.db.models.signals import pre_delete
 
 # Create your models here.
 class User(AbstractUser, TimeStampedModel):
@@ -153,7 +154,7 @@ class Activity(TimeStampedModel):
             return working_days_count
         else:
             return 0
-    
+
     def save(self, *args, **kwargs):
         self.save_user_details()
         super().save(*args, **kwargs)
@@ -163,3 +164,16 @@ class Activity(TimeStampedModel):
             return f'User Activity by: {self.user.username} -- Date: {self.activityDate}'
         else:
             return f'User Activity (Deleted User) -- Date: {self.activityDate}'
+
+class ActivityFile(TimeStampedModel):
+    file = models.FileField(upload_to='reports/')
+    company = models.IntegerField(choices=constants.COMPANY_CHOICES, null=True, blank=True)
+    department = models.CharField(max_length=256, null=True, blank=True)
+
+@receiver(pre_delete, sender=ActivityFile)
+def activityfile_delete(sender, instance, **kwargs):
+    # Get the storage backend associated with the FileField
+    storage = instance.file.storage
+
+    # Delete the file from S3
+    storage.delete(instance.file.name)

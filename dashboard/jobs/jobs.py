@@ -1,7 +1,11 @@
 from django.utils import timezone
-from ..models import Activity, User
+from ..models import Activity, User, ActivityFile
 from datetime import datetime
 from ..constants import constants
+from datetime import date
+from ..utilities.utilities import create_activity_excel_report
+from django.db.models import Q
+
 
 def schedule():
     today = timezone.now().date()
@@ -12,6 +16,8 @@ def schedule():
     old_activities.delete()
 
 def holidays():
+
+
     current_date = timezone.now()
 
     users = User.objects.all()
@@ -42,3 +48,26 @@ def holidays():
 
             # Move to the next day
             current_day += timezone.timedelta(days=1)
+
+
+def generate_noce_timesheet(users=None, companyName=None):
+    if not users:
+        users = User.objects.all()
+    activities = Activity.objects.all()
+    if not companyName:
+        ActivityFile.objects.filter(
+            Q(company__isnull=True) &
+            Q(department__isnull=True) &
+            Q(file__startswith='reports/activity_report')
+        ).delete()
+    elif companyName:
+        ActivityFile.objects.filter(
+            Q(company__isnull=False) &
+            Q(department__isnull=True)
+        ).delete()
+
+
+    date_param = date.today().strftime('%Y-%m-%d')
+    datetime.strptime(date_param, '%Y-%m-%d').date()
+    current_date = date.today()
+    create_activity_excel_report(users, activities, current_date, companyName)
