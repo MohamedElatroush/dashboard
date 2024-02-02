@@ -699,7 +699,7 @@ class ActivityViewSet(viewsets.ModelViewSet):
                 # Adjust end_date to the next day
                 end_date = end_date + timedelta(days=1)
 
-                total_working_days = np.busday_count(start_date, end_date, weekmask='0011111')
+                total_working_days_japan = np.busday_count(start_date, end_date, weekmask='0011111')
 
                 # Filter activities for the current user and month excluding 'H' type activities
                 activities = Activity.objects.filter(
@@ -709,55 +709,68 @@ class ActivityViewSet(viewsets.ModelViewSet):
                 ).exclude(activityType=constants.OFFDAY)
 
                 # Count the number of activities
-                working_days = activities.count()
-            elif user.expert == constants.LOCAL_USER:
+                working_days_japan = activities.count()
+
+                total_working_days_cairo = np.busday_count(start_date, end_date, weekmask='1111111')
+                working_days_cairo = Activity.objects.filter(
+                    user=user,
+                    activityDate__month=date.month,
+                    activityDate__year=date.year,
+                ).exclude(activityType__in=[constants.HOMEASSIGN, constants.OFFDAY]).count
+
+            if user.expert == constants.LOCAL_USER:
                 # Get the last day of the month
                 last_day_of_month = calendar.monthrange(date.year, date.month)[1]
                 end_date = date.replace(day=last_day_of_month) + timedelta(days=1)
-                total_working_days = np.busday_count(start_date, end_date, weekmask='1111111')
-
+                total_working_days_cairo = np.busday_count(start_date, end_date, weekmask='1111111')
+                total_working_days_japan = np.busday_count(start_date, end_date, weekmask='0011111')
                 # Iterate through each day in the range
-                for day in range(1, last_day_of_month + 1):
-                    day_off = Activity.objects.filter(
-                        user=user,
-                        activityDate__day=day,
-                        activityDate__month=date.month,
-                        activityDate__year=date.year,
-                        activityType=constants.OFFDAY,
-                    ).exists()
-
-                    if day_off and (day == 5 and day - 1 in (4, 6) and day + 1 in (4, 6)):
-                        total_working_days -= 1
 
                 # Filter activities for the current user and month excluding 'H' type activities
-                activities = Activity.objects.filter(
+                activities_cairo = Activity.objects.filter(
                     user=user,
                     activityDate__month=date.month,
                     activityDate__year=date.year,
-                ).exclude(activityType=constants.OFFDAY)
+                ).exclude(activityType__in=[constants.OFFDAY, constants.HOMEASSIGN])
 
                 # Count the number of activities
-                working_days = activities.count()
+                working_days_cairo = activities_cairo.count()
 
+                all_cairo_activities = Activity.objects.filter(
+                    user=user,
+                    activityDate__month=date.month,
+                    activityDate__year=date.year,
+                ).exclude(activityType__in=[constants.HOMEASSIGN])
                 for week in calendar.monthcalendar(date.year, date.month):
                     for day in week:
                         # Check if Thursday and Saturday are off-days in the current week
                         if day != 0:  # Ignore days that belong to the previous or next month (represented as 0)
-                            thursday_offday = any(activity.activityType == constants.OFFDAY for activity in activities.filter(activityDate__day=day + 3))
-                            saturday_offday = any(activity.activityType == constants.OFFDAY for activity in activities.filter(activityDate__day=day + 5))
+                            thursday_offday = any(activity.activityType == constants.OFFDAY for activity in all_cairo_activities.filter(activityDate__day=day + 3))
+                            friday_offday = any(activity.activityType == constants.OFFDAY for activity in all_cairo_activities.filter(activityDate__day=day + 4))
+                            saturday_offday = any(activity.activityType == constants.OFFDAY for activity in all_cairo_activities.filter(activityDate__day=day + 5))
 
                             # If either Thursday or Saturday is off-day, decrement working_days
-                            if thursday_offday or saturday_offday:
-                                working_days -= 1
-            # Append user data to the response
-            data.append({
-                'user__id': user.id,
-                'user__first_name': user.first_name,
-                'user__last_name': user.last_name,
-                'user__email': user.email,
-                'working_days': working_days,
-                'total_days': total_working_days,
-            })
+                            if thursday_offday and saturday_offday and friday_offday:
+                                total_working_days_cairo -= 1
+
+                activities_japan = Activity.objects.filter(
+                    user=user,
+                    activityDate__month=date.month,
+                    activityDate__year=date.year,
+                ).exclude(activityType__in=[constants.OFFDAY, constants.INCAIRO])
+                working_days_japan = activities_japan.count()
+
+                # Append user data to the response
+                data.append({
+                    'user__id': user.id,
+                    'user__first_name': user.first_name,
+                    'user__last_name': user.last_name,
+                    'user__email': user.email,
+                    'working_days_cairo': working_days_cairo,
+                    'total_days_cairo': total_working_days_cairo,
+                    'working_days_japan': working_days_japan,
+                    'total_days_japan': total_working_days_japan
+                })
 
         return Response(data, status=status.HTTP_200_OK)
 
@@ -795,7 +808,8 @@ class LatestFileView(viewsets.ModelViewSet):
         current_year = timezone.now().year
         latest_file = ActivityFile.objects.filter(
             created__month=current_month,
-            created__year=current_year
+            created__year=current_year,
+            file__startswith='reports/activity_report'
         ).order_by('-created').first()
 
         if latest_file:
