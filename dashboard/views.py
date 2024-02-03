@@ -353,7 +353,7 @@ class UserViewSet(viewsets.ModelViewSet):
 
         ws.cell(row=2, column=1, value="Month")
         ws.cell(row=2, column=1).border = name_year_month_border
-        ws.cell(row=2, column=2, value=date.month)
+        ws.cell(row=2, column=2, value=calendar.month_name[date.month])
         ws.cell(row=2, column=2).border = name_year_month_border
         ws.cell(row=1, column=1).font = dateFont  # Apply the font settings
         ws.cell(row=1, column=2).font = dateFont  # Apply the font settings
@@ -806,11 +806,35 @@ class LatestFileView(viewsets.ModelViewSet):
     def export(self, request, *args, **kwargs):
         current_month = timezone.now().month
         current_year = timezone.now().year
-        latest_file = ActivityFile.objects.filter(
-            created__month=current_month,
-            created__year=current_year,
-            file__startswith='reports/activity_report'
-        ).order_by('-created').first()
+
+        # Get the company from query parameters, default to None
+        company_param = request.query_params.get('company', None)
+        # Convert company_param to integer, default to 0
+        # Convert company_param to integer, default to 0
+        company = int(company_param) if company_param else 0
+
+        # Find the text name of the company from the choices
+        company_text_name = None
+        for choice_value, choice_text in constants.COMPANY_CHOICES:
+            if choice_value == company:
+                company_text_name = choice_text
+                break
+
+        if company_text_name:
+            # Build the file filter
+            file_filter = f'reports/{company_text_name.lower()}_activity_report'
+            # Query the database
+            latest_file = ActivityFile.objects.filter(
+                created__month=current_month,
+                created__year=current_year,
+                file__startswith=file_filter
+            ).order_by('-created').first()
+        else:
+            latest_file = ActivityFile.objects.filter(
+                created__month=current_month,
+                created__year=current_year,
+                file__startswith='reports/activity_report'
+            ).order_by('-created').first()
 
         if latest_file:
             serializer = ActivityFileSerializer(latest_file)
