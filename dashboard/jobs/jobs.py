@@ -61,11 +61,10 @@ def generate_noce_timesheet(users=None, companyName=None):
             Q(file__startswith='reports/activity_report')
         ).delete()
     elif companyName:
+        print(companyName)
         ActivityFile.objects.filter(
-            Q(company__isnull=False) &
-            Q(department__isnull=True)
+            Q(file__startswith=f'reports/{companyName}')
         ).delete()
-
 
     date_param = date.today().strftime('%Y-%m-%d')
     datetime.strptime(date_param, '%Y-%m-%d').date()

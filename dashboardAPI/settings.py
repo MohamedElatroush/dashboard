@@ -26,10 +26,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-&$qei=%+2th=du&)+$ek7^k*sp!wa0kunhb9((w8tyg@o%_+_y'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = ["127.0.0.1", "localhost", "*", "54.145.211.86","ocglobal-railway.com"]
-
 
 # Application definition
 
@@ -186,14 +185,13 @@ SIMPLE_JWT = {
     'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=1),
 }
 
-CORS_ALLOW_ALL_ORIGINS = True
-
 AWS_ACCESS_KEY_ID = config('AWS_ACCESS_KEY_ID', default='')
 AWS_SECRET_ACCESS_KEY = config('AWS_SECRET_ACCESS_KEY', default='')
-AWS_STORAGE_BUCKET_NAME = config('AWS_STORAGE_BUCKET_NAME', default='')
-AWS_S3_SIGNATURE_NAME = config('AWS_S3_SIGNATURE_NAME', default='s3v4')
-AWS_S3_REGION_NAME = config('AWS_S3_REGION_NAME', default='us-east-1')
-AWS_S3_FILE_OVERWRITE = config('AWS_S3_FILE_OVERWRITE', default=False, cast=bool)
+
+AWS_STORAGE_BUCKET_NAME='nocefiles'
+AWS_S3_SIGNATURE_NAME='s3v4',
+AWS_S3_REGION_NAME='us-east-1'
+AWS_S3_FILE_OVERWRITE=False
 AWS_DEFAULT_ACL=None
-AWS_S3_VERITY=True
+AWS_S3_VERIFY=True
 DEFAULT_FILE_STORAGE='storages.backends.s3boto3.S3Boto3Storage'

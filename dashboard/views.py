@@ -452,6 +452,11 @@ class ActivityViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['GET'])
     def my_activities(self, request, *args, **kwargs):
+        """
+            This returns the logged in user activities for the current month,
+            however if the logged in user is a superuser/admin then it shows 
+            all users' activities
+        """
         requestId = request.user.id
         user = User.objects.filter(id=requestId).first()
 
@@ -459,9 +464,11 @@ class ActivityViewSet(viewsets.ModelViewSet):
         current_date = timezone.now()
         first_day_of_month = current_date.replace(day=1)
         last_day_of_month = (first_day_of_month + timezone.timedelta(days=32)).replace(day=1) - timezone.timedelta(days=1)
-
-        # Filter activities for the current month and order by activityDate
-        activities = Activity.objects.filter(user=user, activityDate__range=[first_day_of_month, last_day_of_month]).order_by('activityDate')
+        if (user.is_superuser or user.isAdmin):
+            activities = Activity.objects.filter(activityDate__range=[first_day_of_month, last_day_of_month]).order_by('activityDate')
+        else:
+            # Filter activities for the current month and order by activityDate
+            activities = Activity.objects.filter(user=user, activityDate__range=[first_day_of_month, last_day_of_month]).order_by('activityDate')
         serializer = ActivitySerializer(activities, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -716,7 +723,7 @@ class ActivityViewSet(viewsets.ModelViewSet):
                     user=user,
                     activityDate__month=date.month,
                     activityDate__year=date.year,
-                ).exclude(activityType__in=[constants.HOMEASSIGN, constants.OFFDAY]).count
+                ).exclude(activityType__in=[constants.HOMEASSIGN, constants.OFFDAY]).count()
 
             if user.expert == constants.LOCAL_USER:
                 # Get the last day of the month
@@ -789,9 +796,12 @@ class ActivityViewSet(viewsets.ModelViewSet):
         if not activity:
             return Response(constants.ERR_NO_ACTIVITY_ID_FOUND, status=status.HTTP_400_BAD_REQUEST)
 
+        user = User.objects.filter(id=request_user_id).first()
+
         # check if user editing is the owner of that activity
-        if activity.user.id != request_user_id:
+        if activity.user.id != request_user_id and not (user.isAdmin or user.is_superuser):
             return Response(constants.NOT_ALLOWED_TO_ACCESS, status=status.HTTP_400_BAD_REQUEST)
+
 
         # Update the activity fields with the serializer data
         activity.userActivity = serializer.validated_data.get('userActivity', activity.userActivity)
@@ -811,7 +821,7 @@ class LatestFileView(viewsets.ModelViewSet):
         company_param = request.query_params.get('company', None)
         # Convert company_param to integer, default to 0
         # Convert company_param to integer, default to 0
-        company = int(company_param) if company_param else 0
+        company = int(company_param) if company_param else None
 
         # Find the text name of the company from the choices
         company_text_name = None

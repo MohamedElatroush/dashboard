@@ -8,6 +8,7 @@ from django.dispatch import receiver
 from django.utils import timezone
 from datetime import datetime, timedelta
 from django.db.models.signals import pre_delete
+from storages.backends.s3boto3 import S3Boto3Storage
 
 # Create your models here.
 class User(AbstractUser, TimeStampedModel):
@@ -166,7 +167,7 @@ class Activity(TimeStampedModel):
             return f'User Activity (Deleted User) -- Date: {self.activityDate}'
 
 class ActivityFile(TimeStampedModel):
-    file = models.FileField(upload_to='reports/')
+    file = models.FileField(upload_to='reports/', storage=S3Boto3Storage())
     company = models.IntegerField(choices=constants.COMPANY_CHOICES, null=True, blank=True)
     department = models.CharField(max_length=256, null=True, blank=True)
 
