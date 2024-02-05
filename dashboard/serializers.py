@@ -46,16 +46,44 @@ class ActivitySerializer(serializers.ModelSerializer):
         model=Activity
         fields="__all__"
     def get_username(self, obj):
+        if obj.user:
         # Access the related User object and retrieve the username
-        return obj.user.username
-    # def get_userType(self, obj):
-    #     return constants.USER_TYPE_CHOICES[obj.user.userType][1]
+            return obj.user.username
+        elif obj.user_details and 'username' in obj.user_details:
+            # Extract the username from user_details JSON field
+            return obj.user_details['username']
+        else:
+            # Return a default value or handle the case as needed
+            return "User Deleted"
     def get_firstName(self, obj):
-        return obj.user.first_name
+        if obj.user:
+            return obj.user.first_name
+        elif obj.user_details and 'fullName' in obj.user_details:
+            # Extract the first part of the fullName as first_name
+            return obj.user_details['fullName'].split()[0]
+        else:
+            # Return a default value or handle the case as needed
+            return ""
+
     def get_lastName(self, obj):
-        return obj.user.last_name
+        if obj.user:
+            return obj.user.last_name
+        elif obj.user_details and 'fullName' in obj.user_details:
+            # Extract the last part of the fullName as last_name
+            return obj.user_details['fullName'].split()[-1]
+        else:
+            # Return a default value or handle the case as needed
+            return ""
+        
     def get_hrCode(self, obj):
-        return obj.user.hrCode
+        if obj.user:
+            return obj.user.hrCode
+        elif obj.user_details and 'hrCode' in obj.user_details:
+            # Extract the username from user_details JSON field
+            return obj.user_details['hrCode']
+        else:
+            # Return a default value or handle the case as needed
+            return "User Deleted"
     def get_activityType(self, obj):
         activity_type = obj.activityType
         if activity_type is not None:

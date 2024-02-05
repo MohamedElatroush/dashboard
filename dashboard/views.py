@@ -454,16 +454,22 @@ class ActivityViewSet(viewsets.ModelViewSet):
     def my_activities(self, request, *args, **kwargs):
         """
             This returns the logged in user activities for the current month,
-            however if the logged in user is a superuser/admin then it shows 
+            however if the logged in user is a superuser/admin then it shows
             all users' activities
         """
         requestId = request.user.id
         user = User.objects.filter(id=requestId).first()
 
+        serializer = UserTimeSheetSerializer(data=request.query_params)
+        serializer.is_valid()
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         # Get the first day and last day of the current month
-        current_date = timezone.now()
+        current_date = serializer.validated_data['date']
+
         first_day_of_month = current_date.replace(day=1)
         last_day_of_month = (first_day_of_month + timezone.timedelta(days=32)).replace(day=1) - timezone.timedelta(days=1)
+
         if (user.is_superuser or user.isAdmin):
             activities = Activity.objects.filter(activityDate__range=[first_day_of_month, last_day_of_month]).order_by('activityDate')
         else:

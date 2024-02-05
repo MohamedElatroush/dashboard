@@ -21,7 +21,6 @@ def generate_ts_ACE(param):
     generate_noce_timesheet(users=ACE_users, companyName=constants.COMPANY_CHOICES[constants.ACE][1])
 
 def start():
-    print('start')
     scheduler = BackgroundScheduler()
     scheduler.add_job(schedule, 'cron', month='*', day='1', hour=0, minute=0, second=0)
     # Calculate the last day of the current month

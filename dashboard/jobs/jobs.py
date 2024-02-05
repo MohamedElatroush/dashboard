@@ -53,15 +53,13 @@ def holidays():
 def generate_noce_timesheet(users=None, companyName=None):
     if not users:
         users = User.objects.all()
-    activities = Activity.objects.all()
+    activities = Activity.objects.filter(user__in=users)
     if not companyName:
         ActivityFile.objects.filter(
-            Q(company__isnull=True) &
-            Q(department__isnull=True) &
             Q(file__startswith='reports/activity_report')
         ).delete()
+
     elif companyName:
-        print(companyName)
         ActivityFile.objects.filter(
             Q(file__startswith=f'reports/{companyName}')
         ).delete()
