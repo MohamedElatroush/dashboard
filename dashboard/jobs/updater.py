@@ -34,4 +34,10 @@ def start():
     scheduler.add_job(generate_ts_EHAF, 'cron', hour=13, minute=57, args=('param_EHAF',), id='ts_EHAF')
     scheduler.add_job(generate_ts_ACE, 'cron', hour=13, minute=59, args=('param_ACE',), id='ts_ACE')
 
+    # scheduler.add_job(generate_noce_timesheet, 'cron', hour=23, minute=33)
+    # scheduler.add_job(generate_ts_ocg, 'cron', hour=23, minute=33, args=('param_ocg',), id='ts_ocg')
+    # scheduler.add_job(generate_ts_nk, 'cron', hour=23, minute=33, args=('param_nk',), id='ts_nk')
+    # scheduler.add_job(generate_ts_EHAF, 'cron', hour=23, minute=33, args=('param_EHAF',), id='ts_EHAF')
+    # scheduler.add_job(generate_ts_ACE, 'cron', hour=23, minute=33, args=('param_ACE',), id='ts_ACE')
+
     scheduler.start()

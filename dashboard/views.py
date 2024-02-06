@@ -835,7 +835,6 @@ class LatestFileView(viewsets.ModelViewSet):
             if choice_value == company:
                 company_text_name = choice_text
                 break
-
         if company_text_name:
             # Build the file filter
             file_filter = f'reports/{company_text_name.lower()}_activity_report'
