@@ -696,7 +696,7 @@ def create_activity_excel_report(users, activities, selected_date, companyName):
     for user in users:
         __add_cover_sheet__(wb, current_month_name, current_year, user, current_date, current_month)
         __add_daily_activities_sheet__(wb, current_date, user)
-    
+
     ws = wb.active
     ws.title = "TS"
 

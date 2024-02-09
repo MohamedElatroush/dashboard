@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 from apscheduler.schedulers.background import BackgroundScheduler, BlockingScheduler
-from .jobs import schedule, holidays, generate_noce_timesheet
+from .jobs import schedule, holidays, generate_noce_timesheet, clear_activity_files
 from ..models import (User)
 from ..constants import constants
 
@@ -28,16 +28,12 @@ def start():
     # Schedule the 'holidays' job to run at 11:59 pm on the last day of the current month
     scheduler.add_job(holidays, 'date', run_date=last_day_of_current_month)
 
-    scheduler.add_job(generate_noce_timesheet, 'cron', hour=13, minute=2)
-    scheduler.add_job(generate_ts_ocg, 'cron', hour=12, minute=52, args=('param_ocg',), id='ts_ocg')
-    scheduler.add_job(generate_ts_nk, 'cron', hour=12, minute=54, args=('param_nk',), id='ts_nk')
-    scheduler.add_job(generate_ts_EHAF, 'cron', hour=13, minute=57, args=('param_EHAF',), id='ts_EHAF')
-    scheduler.add_job(generate_ts_ACE, 'cron', hour=13, minute=59, args=('param_ACE',), id='ts_ACE')
+    scheduler.add_job(clear_activity_files, 'cron', hour=12, minute=58)
 
-    # scheduler.add_job(generate_noce_timesheet, 'cron', hour=23, minute=33)
-    # scheduler.add_job(generate_ts_ocg, 'cron', hour=23, minute=33, args=('param_ocg',), id='ts_ocg')
-    # scheduler.add_job(generate_ts_nk, 'cron', hour=23, minute=33, args=('param_nk',), id='ts_nk')
-    # scheduler.add_job(generate_ts_EHAF, 'cron', hour=23, minute=33, args=('param_EHAF',), id='ts_EHAF')
-    # scheduler.add_job(generate_ts_ACE, 'cron', hour=23, minute=33, args=('param_ACE',), id='ts_ACE')
+    scheduler.add_job(generate_noce_timesheet, 'cron', hour=13, minute=0)
+    scheduler.add_job(generate_ts_ocg, 'cron', hour=13, minute=15, args=('param_ocg',), id='ts_ocg')
+    scheduler.add_job(generate_ts_nk, 'cron', hour=13, minute=30, args=('param_nk',), id='ts_nk')
+    scheduler.add_job(generate_ts_EHAF, 'cron', hour=13, minute=45, args=('param_EHAF',), id='ts_EHAF')
+    scheduler.add_job(generate_ts_ACE, 'cron', hour=14, minute=0, args=('param_ACE',), id='ts_ACE')
 
     scheduler.start()

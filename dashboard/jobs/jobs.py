@@ -54,17 +54,16 @@ def generate_noce_timesheet(users=None, companyName=None):
     if not users:
         users = User.objects.all()
     activities = Activity.objects.filter(user__in=users)
-    if not companyName:
-        ActivityFile.objects.filter(
-            Q(file__startswith='reports/activity_report')
-        ).delete()
-
-    elif companyName:
-        ActivityFile.objects.filter(
-            Q(file__startswith=f'reports/{companyName}')
-        ).delete()
-
     date_param = date.today().strftime('%Y-%m-%d')
     datetime.strptime(date_param, '%Y-%m-%d').date()
     current_date = date.today()
     create_activity_excel_report(users, activities, current_date, companyName)
+
+def clear_activity_files():
+    activity_files = ActivityFile.objects.all()
+    print(activity_files)
+    # Check if there are any objects
+    if activity_files.exists():
+    # If there are objects, delete them
+        activity_files.delete()
+    return
