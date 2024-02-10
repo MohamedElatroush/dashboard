@@ -170,11 +170,3 @@ class ActivityFile(TimeStampedModel):
     file = models.FileField(upload_to='reports/', storage=S3Boto3Storage())
     company = models.IntegerField(choices=constants.COMPANY_CHOICES, null=True, blank=True)
     department = models.CharField(max_length=256, null=True, blank=True)
-
-@receiver(pre_delete, sender=ActivityFile)
-def activityfile_delete(sender, instance, **kwargs):
-    # Get the storage backend associated with the FileField
-    storage = instance.file.storage
-
-    # Delete the file from S3
-    storage.delete(instance.file.name)

@@ -5,6 +5,9 @@ from ..constants import constants
 from datetime import date
 from ..utilities.utilities import create_activity_excel_report
 from django.db.models import Q
+import boto3
+from django.conf import settings
+from botocore.exceptions import NoCredentialsError
 
 
 def schedule():
@@ -60,10 +63,20 @@ def generate_noce_timesheet(users=None, companyName=None):
     create_activity_excel_report(users, activities, current_date, companyName)
 
 def clear_activity_files():
+    try:
+        s3 = boto3.client(
+            's3',
+            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+        )
+    except NoCredentialsError:
+        # Handle the case where credentials are not found
+        print("Unable to locate AWS credentials. Please ensure they are configured.")
+        return
+
     activity_files = ActivityFile.objects.all()
-    print(activity_files)
-    # Check if there are any objects
-    if activity_files.exists():
-    # If there are objects, delete them
-        activity_files.delete()
+    if activity_files:
+        for file in activity_files:
+            s3.delete_object(Bucket=str(settings.AWS_STORAGE_BUCKET_NAME), Key=str(file.file))
+            file.delete()
     return
