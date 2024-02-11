@@ -3,6 +3,7 @@ from apscheduler.schedulers.background import BackgroundScheduler, BlockingSched
 from .jobs import schedule, holidays, generate_noce_timesheet, clear_activity_files
 from ..models import (User)
 from ..constants import constants
+import logging
 
 def generate_ts_ocg(param):
     ocg_users = User.objects.filter(company=constants.OCG)
@@ -21,19 +22,20 @@ def generate_ts_ACE(param):
     generate_noce_timesheet(users=ACE_users, companyName=constants.COMPANY_CHOICES[constants.ACE][1])
 
 def start():
-    scheduler = BackgroundScheduler()
-    scheduler.add_job(schedule, 'cron', month='*', day='1', hour=0, minute=0, second=0)
-    # Calculate the last day of the current month
-    last_day_of_current_month = datetime.now().replace(day=1, hour=23, minute=59, second=59) - timedelta(days=1)
-    # Schedule the 'holidays' job to run at 11:59 pm on the last day of the current month
-    scheduler.add_job(holidays, 'date', run_date=last_day_of_current_month)
+    try:
+        scheduler = BackgroundScheduler()
+        scheduler.add_job(schedule, 'cron', month='*', day='1', hour=0, minute=0, second=0)
+        # Calculate the last day of the current month
+        last_day_of_current_month = datetime.now().replace(day=1, hour=23, minute=59, second=59) - timedelta(days=1)
+        # Schedule the 'holidays' job to run at 11:59 pm on the last day of the current month
+        scheduler.add_job(holidays, 'date', run_date=last_day_of_current_month)
 
-    scheduler.add_job(clear_activity_files, 'cron', hour=12, minute=58)
+        scheduler.add_job(generate_noce_timesheet, 'cron', hour=13, minute=0)
+        scheduler.add_job(generate_ts_ocg, 'cron', hour=13, minute=5, args=('param_ocg',), id='ts_ocg')
+        scheduler.add_job(generate_ts_nk, 'cron', hour=13, minute=10, args=('param_nk',), id='ts_nk')
+        scheduler.add_job(generate_ts_EHAF, 'cron', hour=22, minute=15, args=('param_EHAF',), id='ts_EHAF')
+        scheduler.add_job(generate_ts_ACE, 'cron', hour=22, minute=8, args=('param_ACE',), id='ts_ACE')
 
-    scheduler.add_job(generate_noce_timesheet, 'cron', hour=13, minute=0)
-    scheduler.add_job(generate_ts_ocg, 'cron', hour=13, minute=5, args=('param_ocg',), id='ts_ocg')
-    scheduler.add_job(generate_ts_nk, 'cron', hour=13, minute=10, args=('param_nk',), id='ts_nk')
-    scheduler.add_job(generate_ts_EHAF, 'cron', hour=13, minute=15, args=('param_EHAF',), id='ts_EHAF')
-    scheduler.add_job(generate_ts_ACE, 'cron', hour=13, minute=20, args=('param_ACE',), id='ts_ACE')
-
-    scheduler.start()
+        scheduler.start()
+    except Exception as e:
+        logging.exception("An error occurred in the scheduler: %s", e)
