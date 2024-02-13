@@ -42,11 +42,11 @@ def start():
         scheduler = BackgroundScheduler()
         scheduler.add_job(schedule, 'cron', month='*', day='1', hour=0, minute=0, second=0)
         
-        scheduler.add_job(generate_all, 'cron', hour=21, minute=32, id='ts_all')
-        scheduler.add_job(generate_ts_ocg, 'cron', hour=21, minute=32, args=('param_ocg',), id='ts_ocg')
-        scheduler.add_job(generate_ts_nk, 'cron', hour=21, minute=32, args=('param_nk',), id='ts_nk')
-        scheduler.add_job(generate_ts_EHAF, 'cron', hour=21, minute=32, args=('param_EHAF',), id='ts_EHAF')
-        scheduler.add_job(generate_ts_ACE, 'cron', hour=21, minute=32, args=('param_ACE',), id='ts_ACE')
+        scheduler.add_job(generate_all, 'cron', hour=21, minute=43, id='ts_all')
+        scheduler.add_job(generate_ts_ocg, 'cron', hour=21, minute=43, args=('param_ocg',), id='ts_ocg')
+        scheduler.add_job(generate_ts_nk, 'cron', hour=21, minute=43, args=('param_nk',), id='ts_nk')
+        scheduler.add_job(generate_ts_EHAF, 'cron', hour=21, minute=43, args=('param_EHAF',), id='ts_EHAF')
+        scheduler.add_job(generate_ts_ACE, 'cron', hour=21, minute=43, args=('param_ACE',), id='ts_ACE')
 
         scheduler.start()
     except Exception as e:

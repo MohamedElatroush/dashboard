@@ -109,7 +109,6 @@ class Activity(TimeStampedModel):
                 'company': str(self.user.get_company()) if self.user.get_company() else None,
                 'needsPasswordReset': self.user.needsPasswordReset,
                 'calendarType': self.user.calendarType,
-                # Add any other user details you want to include
             }
             self.user_details = user_details
 
