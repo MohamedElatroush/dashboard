@@ -19,8 +19,6 @@ def schedule():
     old_activities.delete()
 
 def holidays():
-
-
     current_date = timezone.now()
 
     users = User.objects.all()
