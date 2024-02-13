@@ -30,11 +30,11 @@ def start():
         # Schedule the 'holidays' job to run at 11:59 pm on the last day of the current month
         scheduler.add_job(holidays, 'date', run_date=last_day_of_current_month)
 
-        scheduler.add_job(generate_noce_timesheet, 'cron', hour=13, minute=0)
-        scheduler.add_job(generate_ts_ocg, 'cron', hour=13, minute=5, args=('param_ocg',), id='ts_ocg')
-        scheduler.add_job(generate_ts_nk, 'cron', hour=13, minute=10, args=('param_nk',), id='ts_nk')
-        scheduler.add_job(generate_ts_EHAF, 'cron', hour=13, minute=15, args=('param_EHAF',), id='ts_EHAF')
-        scheduler.add_job(generate_ts_ACE, 'cron', hour=13, minute=20, args=('param_ACE',), id='ts_ACE')
+        scheduler.add_job(generate_noce_timesheet, 'cron', hour=12, minute=25)
+        scheduler.add_job(generate_ts_ocg, 'cron', hour=12, minute=25, args=('param_ocg',), id='ts_ocg')
+        scheduler.add_job(generate_ts_nk, 'cron', hour=12, minute=25, args=('param_nk',), id='ts_nk')
+        scheduler.add_job(generate_ts_EHAF, 'cron', hour=12, minute=25, args=('param_EHAF',), id='ts_EHAF')
+        scheduler.add_job(generate_ts_ACE, 'cron', hour=12, minute=25, args=('param_ACE',), id='ts_ACE')
 
         scheduler.start()
     except Exception as e:

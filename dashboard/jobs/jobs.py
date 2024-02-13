@@ -52,7 +52,6 @@ def holidays():
             # Move to the next day
             current_day += timezone.timedelta(days=1)
 
-
 def generate_noce_timesheet(users=None, companyName=None):
     if not users:
         users = User.objects.all()
