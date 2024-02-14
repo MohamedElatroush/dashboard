@@ -822,14 +822,31 @@ def create_activity_excel_report(users, activities, selected_date, companyName):
     excel_data.seek(0)
     # Save the file to the ActivityFile model
     if not companyName:
+        existing_files = ActivityFile.objects.filter(
+            file_name__startswith=f'activity_report_{current_month_name}_{current_year}'
+        )
+        for existing_file in existing_files:
+            existing_file.file.delete(save=False)
+            existing_file.delete()
         ActivityFile.objects.create(
             file=ContentFile(excel_data.getvalue(), name=f'activity_report_{current_month_name}_{current_year}.xlsx'),
+            file_name=f"activity_report_{current_month_name}_{current_year}",
             company=None,
             department=None,
         )
     else:
+        # Find all files with similar names
+        existing_files = ActivityFile.objects.filter(
+            file_name__startswith=f'{companyName}_activity_report_{current_month_name}_{current_year}'
+        )
+
+        for existing_file in existing_files:
+            existing_file.file.delete(save=False)
+            existing_file.delete()
+
         ActivityFile.objects.create(
-            file=ContentFile(excel_data.getvalue(), name=f'{companyName}_activity_report_{current_month_name}_{current_year}.xlsx'),
+            file=ContentFile(excel_data.getvalue(), name=f'{companyName}_activity_report_{current_month_name}_{current_year}'),
+            file_name=f"{companyName}_activity_report_{current_month_name}_{current_year}.xlsx",
             company=None,
             department=None,
         )

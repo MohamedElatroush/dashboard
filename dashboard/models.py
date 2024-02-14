@@ -167,5 +167,6 @@ class Activity(TimeStampedModel):
 
 class ActivityFile(TimeStampedModel):
     file = models.FileField(upload_to='reports/', storage=S3Boto3Storage())
+    file_name = models.CharField(max_length=256, null=True, blank=True)
     company = models.IntegerField(choices=constants.COMPANY_CHOICES, null=True, blank=True)
     department = models.CharField(max_length=256, null=True, blank=True)
