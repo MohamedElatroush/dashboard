@@ -93,6 +93,10 @@ ERR_NO_ACTIVITY_ID_FOUND = {
     "detail": "Failed to edit activity with the provided ID"
 }
 
+ERR_NO_AVAILABLE_TS_AVAILABLE = {
+    "detail": "No available timesheet at the provided date"
+}
+
 # Define constants for column headers
 EXPORT_ACTIVITY_COLUMNS = ["#", "Name", "Source", "Position", "/", "Grade", "Group"]
 
