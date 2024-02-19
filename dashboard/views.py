@@ -32,6 +32,7 @@ import calendar
 import numpy as np
 from django.utils import timezone
 import calendar
+from dashboard.jobs.jobs import generate_noce_timesheet
 
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     @classmethod
@@ -622,8 +623,23 @@ class ActivityViewSet(viewsets.ModelViewSet):
         user = request.user
         if not (user.is_superuser or user.isAdmin):
             return Response(constants.NOT_ALLOWED_TO_ACCESS, status=status.HTTP_400_BAD_REQUEST)
+        
+        serializer = UserTimeSheetSerializer(data=request.query_params)
+        serializer.is_valid()
 
-        return Response(status=status.HTTP_200_OK)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        date = serializer.validated_data.get('date')
+        
+        company_param = request.query_params.get('company', None)
+        if company_param:
+            company_users = User.objects.filter(company=company_param)
+            return generate_noce_timesheet(users=company_users, companyName=constants.COMPANY_CHOICES[int(company_param)][1])
+        else:
+            return generate_noce_timesheet(date=date)
+
+        # return Response(status=status.HTTP_200_OK)
 
     @action(detail=False, methods=['POST'])
     def create_activity(self, request, *args, **kwargs):
@@ -825,7 +841,7 @@ class LatestFileView(viewsets.ModelViewSet):
 
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        
+
         date = serializer.validated_data['date']
 
         current_month = date.month

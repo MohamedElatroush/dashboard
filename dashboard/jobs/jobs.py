@@ -42,14 +42,19 @@ def holidays():
             # Move to the next day
             current_day += timezone.timedelta(days=1)
 
-def generate_noce_timesheet(users=None, companyName=None):
+def generate_noce_timesheet(users=None, companyName=None, date=None):
     if not users:
         users = User.objects.all()
-    activities = Activity.objects.filter(user__in=users)
+
+    activities = Activity.objects.filter(user__in=users,\
+                                          activityDate__year=date.year, \
+                                            activityDate__month=date.month)
+
     date_param = date.today().strftime('%Y-%m-%d')
     datetime.strptime(date_param, '%Y-%m-%d').date()
-    current_date = date.today()
-    create_activity_excel_report(users, activities, current_date, companyName)
+    current_date = date_param
+
+    return create_activity_excel_report(users, activities, current_date, companyName, date)
 
 def clear_activity_files():
     try:

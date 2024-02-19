@@ -661,8 +661,10 @@ def __add_cover_sheet__(wb, current_month_name, current_year, user, current_date
     cover_ws.merge_cells('B51:P51')
     cover_ws['B51'].value = "Note: According to the contract 81/M the total days are working days in Cairo plus to official holiday in Egypt *NOD=C (Working day in Cairo)+H (Official Holiday in Egypt)"
 
-def create_activity_excel_report(users, activities, selected_date, companyName):
-    current_date = datetime.now()
+def create_activity_excel_report(users, activities, selected_date, companyName, date):
+    date = datetime.combine(date, datetime.min.time())
+
+    current_date = date
     current_month = current_date.month
     current_year = current_date.year
 
@@ -679,7 +681,6 @@ def create_activity_excel_report(users, activities, selected_date, companyName):
 
     # Get the current month and year
     current_month_name = current_date.strftime("%B")
-    current_year = current_date.year
 
     last_day_of_month = (current_date.replace(day=1, month=current_month % 12 + 1, year=current_year) - timedelta(days=1)).day
     day_headers = [str(day) for day in range(1, last_day_of_month + 1)]
@@ -850,8 +851,14 @@ def create_activity_excel_report(users, activities, selected_date, companyName):
             company=None,
             department=None,
         )
-    wb.close()
-    return
+
+    excel_data = BytesIO()
+    wb.save(excel_data)
+    excel_data.seek(0)
+    from django.http import HttpResponse
+    response = HttpResponse(excel_data, content_type="application/ms-excel")
+    response["Content-Disposition"] = f'attachment; filename=timesheet.xlsx'
+    return response
 
 def __customize_sheet__(sheet, dep_nat, selected_date):
     # Add a logo at the top right
@@ -878,7 +885,7 @@ def __customize_sheet__(sheet, dep_nat, selected_date):
     sheet.merge_cells(start_row=5, start_column=1, end_row=5, end_column=8)
 
     # Set the selected date below the title
-    date_cell = sheet.cell(row=6, column=2, value=f"{selected_date.strftime('%B %Y')}")
+    date_cell = sheet.cell(row=6, column=2, value=f"{selected_date}")
     date_cell.font = Font(size=14)
     date_cell.alignment = Alignment(horizontal="center")
 
