@@ -631,11 +631,11 @@ class ActivityViewSet(viewsets.ModelViewSet):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         date = serializer.validated_data.get('date')
-        
+
         company_param = request.query_params.get('company', None)
         if company_param:
             company_users = User.objects.filter(company=company_param)
-            return generate_noce_timesheet(users=company_users, companyName=constants.COMPANY_CHOICES[int(company_param)][1])
+            return generate_noce_timesheet(users=company_users, companyName=constants.COMPANY_CHOICES[int(company_param)][1], date=date)
         else:
             return generate_noce_timesheet(date=date)
 
