@@ -1,4 +1,4 @@
-from .models import User, Activity, ActivityFile, hrHistory
+from .models import User, Activity, hrHistory
 from rest_framework.response import Response
 from rest_framework import status
 from .serializers import CreateUserSerializer,\
@@ -6,7 +6,7 @@ from .serializers import CreateUserSerializer,\
       ActivitySerializer, CreateActivitySerializer,\
     MakeUserAdminSerializer, ChangePasswordSerializer,\
     UserTimeSheetSerializer, EditUserSerializer,\
-        CalculateActivitySerializer, EditActivitySerializer, ActivityFileSerializer
+        CalculateActivitySerializer, EditActivitySerializer
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -839,52 +839,6 @@ class ActivityViewSet(viewsets.ModelViewSet):
         return Response(status=status.HTTP_200_OK)
 
 class LatestFileView(viewsets.ModelViewSet):
-    @action(detail=False, methods=['GET'], url_path=r'activities/export')
-    def export(self, request, *args, **kwargs):
-        serializer = UserTimeSheetSerializer(data=request.query_params)
-        serializer.is_valid()
-
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-        date = serializer.validated_data['date']
-
-        current_month = date.month
-        current_year = date.year
-
-        # Get the company from query parameters, default to None
-        company_param = request.query_params.get('company', None)
-        # Convert company_param to integer, default to 0
-        # Convert company_param to integer, default to 0
-        company = int(company_param) if company_param else None
-
-        # Find the text name of the company from the choices
-        company_text_name = None
-        for choice_value, choice_text in constants.COMPANY_CHOICES:
-            if choice_value == company:
-                company_text_name = choice_text
-                break
-        if company_text_name:
-            # Build the file filter
-            file_filter = f'reports/{company_text_name.lower()}_activity_report'
-            # Query the database
-            latest_file = ActivityFile.objects.filter(
-                created__month=current_month,
-                created__year=current_year,
-                file__startswith=file_filter
-            ).order_by('-created').first()
-        else:
-            latest_file = ActivityFile.objects.filter(
-                created__month=current_month,
-                created__year=current_year,
-                file__startswith='reports/activity_report'
-            ).order_by('-created').first()
-
-        if latest_file:
-            serializer = ActivityFileSerializer(latest_file)
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        return Response(constants.ERR_NO_AVAILABLE_TS_AVAILABLE, status=status.HTTP_400_BAD_REQUEST)
-
     @action(detail=False, methods=['GET'], url_path=r'activities/own_timesheet/(?P<userId>\w+(?:-\w+)*)')
     def export_own_timesheet(self, request, *args, **kwargs):
         serializer = UserTimeSheetSerializer(data=request.query_params)

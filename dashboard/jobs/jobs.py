@@ -1,5 +1,5 @@
 from django.utils import timezone
-from ..models import Activity, User, ActivityFile
+from ..models import Activity, User
 from datetime import datetime
 from ..constants import constants
 from datetime import date
@@ -54,22 +54,3 @@ def generate_noce_timesheet(users=None, companyName=None, date=None):
     current_date = date_param
 
     return create_activity_excel_report(users, activities, current_date, companyName, date)
-
-def clear_activity_files():
-    try:
-        s3 = boto3.client(
-            's3',
-            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-        )
-    except NoCredentialsError:
-        # Handle the case where credentials are not found
-        print("Unable to locate AWS credentials. Please ensure they are configured.")
-        return
-
-    activity_files = ActivityFile.objects.all()
-    if activity_files:
-        for file in activity_files:
-            s3.delete_object(Bucket=str(settings.AWS_STORAGE_BUCKET_NAME), Key=str(file.file))
-            file.delete()
-    return

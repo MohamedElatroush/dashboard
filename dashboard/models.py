@@ -78,9 +78,9 @@ class User(AbstractUser, TimeStampedModel):
             elif self.grade in [constants.GRADE_B_1, constants.GRADE_B_2, constants.GRADE_B_3, constants.GRADE_B_4, constants.GRADE_B_5]:
                 self.expert = constants.LOCAL_USER
             self.generate_hr_code()
+            hrHistory.objects.create(hrCode=self.hrCode)
         super().save(*args, **kwargs)
         # Add hrCode to hrHistory model
-        hrHistory.objects.create(hrCode=self.hrCode)
 
     def __str__(self):
         return f'username: {self.username}'
@@ -171,12 +171,6 @@ class Activity(TimeStampedModel):
             return f'User Activity by: {self.user.username} -- Date: {self.activityDate}'
         else:
             return f'User Activity (Deleted User) -- Date: {self.activityDate}'
-
-class ActivityFile(TimeStampedModel):
-    file = models.FileField(upload_to='reports/', storage=S3Boto3Storage())
-    file_name = models.CharField(max_length=256, null=True, blank=True)
-    company = models.IntegerField(choices=constants.COMPANY_CHOICES, null=True, blank=True)
-    department = models.CharField(max_length=256, null=True, blank=True)
 
 class hrHistory(TimeStampedModel):
     hrCode = models.CharField(max_length=256, unique=True)

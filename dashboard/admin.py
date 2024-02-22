@@ -1,11 +1,7 @@
 from django.contrib import admin
-from .models import User, Activity, ActivityFile, hrHistory
-class ActivityFileAdmin(admin.ModelAdmin):
-    list_display = ('created', 'file')
-    readonly_fields = ('created',)
+from .models import User, Activity, hrHistory
 
 # Register your models here.
 admin.site.register(User)
 admin.site.register(Activity)
-admin.site.register(ActivityFile, ActivityFileAdmin)
 admin.site.register(hrHistory)
