@@ -97,6 +97,10 @@ ERR_NO_AVAILABLE_TS_AVAILABLE = {
     "detail": "No available timesheet at the provided date"
 }
 
+ERR_HR_CODE_USED = {
+    "detail": "An HR code was used before"
+}
+
 # Define constants for column headers
 EXPORT_ACTIVITY_COLUMNS = ["#", "Name", "Source", "Position", "/", "Grade", "Group"]
 

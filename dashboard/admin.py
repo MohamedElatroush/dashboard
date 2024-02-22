@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import User, Activity, ActivityFile
+from .models import User, Activity, ActivityFile, hrHistory
 class ActivityFileAdmin(admin.ModelAdmin):
     list_display = ('created', 'file')
     readonly_fields = ('created',)
@@ -8,3 +8,4 @@ class ActivityFileAdmin(admin.ModelAdmin):
 admin.site.register(User)
 admin.site.register(Activity)
 admin.site.register(ActivityFile, ActivityFileAdmin)
+admin.site.register(hrHistory)

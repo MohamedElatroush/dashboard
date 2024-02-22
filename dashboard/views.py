@@ -1,4 +1,4 @@
-from .models import User, Activity, ActivityFile
+from .models import User, Activity, ActivityFile, hrHistory
 from rest_framework.response import Response
 from rest_framework import status
 from .serializers import CreateUserSerializer,\
@@ -224,6 +224,8 @@ class UserViewSet(viewsets.ModelViewSet):
             return Response({'detail': 'No file uploaded'}, status=status.HTTP_400_BAD_REQUEST)
         excel_file = request.FILES['file']
 
+        unavailable_codes = hrHistory.objects.all().values_list('hrCode', flat=True)
+
         try:
             all_usernames = set(User.objects.all().values_list('username', flat=True))
             # Read the Excel file again, this time setting the second row as headers
@@ -255,6 +257,9 @@ class UserViewSet(viewsets.ModelViewSet):
                 expert = row['Expert']
                 mobilization_status = row['Mobilization status']
                 company = row['Company']
+
+                if hr_code in unavailable_codes:
+                    return Response(constants.ERR_HR_CODE_USED, status=status.HTTP_400_BAD_REQUEST)
 
                 # Assuming you have a function to convert the grade and expert to the corresponding integer choices
                 grade_choice = utilities.convert_grade_to_choice(grade)

@@ -38,13 +38,12 @@ def holidays():
                     activityDate=current_day.date(),
                     activityType=constants.OFFDAY
                 )
-
             # Move to the next day
             current_day += timezone.timedelta(days=1)
 
 def generate_noce_timesheet(users=None, companyName=None, date=None):
     if not users:
-        users = User.objects.all()
+        users = User.objects.all().exclude(isAdmin=True)
 
     activities = Activity.objects.filter(user__in=users,\
                                           activityDate__year=date.year, \

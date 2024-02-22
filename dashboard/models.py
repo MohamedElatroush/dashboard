@@ -57,7 +57,12 @@ class User(AbstractUser, TimeStampedModel):
             numerical_part = int(max_hr_code.hrCode[len(grade_prefix):]) + 1
         else:
             numerical_part = 1
-        self.hrCode = f'{grade_prefix}{numerical_part:03d}'
+        while True:
+            new_hr_code = f'{grade_prefix}{numerical_part:03d}'
+            if new_hr_code not in hrHistory.objects.values_list('hrCode', flat=True):
+                self.hrCode = new_hr_code
+                break
+            numerical_part += 1
     def get_full_name(self):
         return self.first_name + " " + self.last_name
 
@@ -74,6 +79,8 @@ class User(AbstractUser, TimeStampedModel):
                 self.expert = constants.LOCAL_USER
             self.generate_hr_code()
         super().save(*args, **kwargs)
+        # Add hrCode to hrHistory model
+        hrHistory.objects.create(hrCode=self.hrCode)
 
     def __str__(self):
         return f'username: {self.username}'
@@ -170,3 +177,6 @@ class ActivityFile(TimeStampedModel):
     file_name = models.CharField(max_length=256, null=True, blank=True)
     company = models.IntegerField(choices=constants.COMPANY_CHOICES, null=True, blank=True)
     department = models.CharField(max_length=256, null=True, blank=True)
+
+class hrHistory(TimeStampedModel):
+    hrCode = models.CharField(max_length=256, unique=True)
