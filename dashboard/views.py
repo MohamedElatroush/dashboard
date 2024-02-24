@@ -752,6 +752,18 @@ class ActivityViewSet(viewsets.ModelViewSet):
                     activityDate__year=date.year,
                 ).exclude(activityType__in=[constants.HOMEASSIGN, constants.OFFDAY]).count()
 
+                # Append user data to the response
+                data.append({
+                    'user__id': user.id,
+                    'user__first_name': user.first_name,
+                    'user__last_name': user.last_name,
+                    'user__email': user.email,
+                    'working_days_cairo': working_days_cairo,
+                    'total_days_cairo': total_working_days_cairo,
+                    'working_days_japan': working_days_japan,
+                    'total_days_japan': total_working_days_japan
+                })
+
             if user.expert == constants.LOCAL_USER:
                 # Get the last day of the month
                 last_day_of_month = calendar.monthrange(date.year, date.month)[1]
