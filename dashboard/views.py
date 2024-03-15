@@ -33,6 +33,7 @@ import numpy as np
 from django.utils import timezone
 import calendar
 from dashboard.jobs.jobs import generate_noce_timesheet
+from dateutil.relativedelta import relativedelta
 
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     @classmethod
@@ -370,7 +371,7 @@ class UserViewSet(viewsets.ModelViewSet):
         ws.cell(row=1, column=7).font = dateFont
         ws.cell(row=1, column=7).border = name_year_month_border
 
-        ws.cell(row=2, column=7, value=user.department)
+        ws.cell(row=2, column=7, value=user.position)
         ws.cell(row=2, column=7).font = dateFont
         ws.cell(row=2, column=7).border = name_year_month_border
 
@@ -727,11 +728,8 @@ class ActivityViewSet(viewsets.ModelViewSet):
 
             if user.expert == constants.EXPERT_USER:
                 start_date = date.replace(day=1)
-                last_day_of_month = calendar.monthrange(date.year, date.month)[1]
-                end_date = (date + timedelta(days=last_day_of_month)).replace(day=1)
-
-                # Adjust end_date to the next day
-                end_date = end_date + timedelta(days=1)
+                end_date = date.replace(day=calendar.monthrange(date.year, date.month)[1])
+                end_date = end_date + relativedelta(days=1)
 
                 total_working_days_japan = np.busday_count(start_date, end_date, weekmask='0011111')
 
@@ -740,18 +738,19 @@ class ActivityViewSet(viewsets.ModelViewSet):
                     user=user,
                     activityDate__month=date.month,
                     activityDate__year=date.year,
-                ).exclude(activityType=constants.OFFDAY)
+                ).exclude(activityType__in=[constants.OFFDAY, constants.INCAIRO])
 
                 # Count the number of activities
                 working_days_japan = activities.count()
 
+                last_day_of_month = calendar.monthrange(date.year, date.month)[1]
+                end_date = date.replace(day=last_day_of_month) + timedelta(days=1)
                 total_working_days_cairo = np.busday_count(start_date, end_date, weekmask='1111111')
                 working_days_cairo = Activity.objects.filter(
                     user=user,
                     activityDate__month=date.month,
                     activityDate__year=date.year,
                 ).exclude(activityType__in=[constants.HOMEASSIGN, constants.OFFDAY]).count()
-
                 # Append user data to the response
                 data.append({
                     'user__id': user.id,
@@ -769,7 +768,6 @@ class ActivityViewSet(viewsets.ModelViewSet):
                 last_day_of_month = calendar.monthrange(date.year, date.month)[1]
                 end_date = date.replace(day=last_day_of_month) + timedelta(days=1)
                 total_working_days_cairo = np.busday_count(start_date, end_date, weekmask='1111111')
-                total_working_days_japan = np.busday_count(start_date, end_date, weekmask='0011111')
                 # Iterate through each day in the range
 
                 # Filter activities for the current user and month excluding 'H' type activities
@@ -786,7 +784,7 @@ class ActivityViewSet(viewsets.ModelViewSet):
                     user=user,
                     activityDate__month=date.month,
                     activityDate__year=date.year,
-                ).exclude(activityType__in=[constants.HOMEASSIGN])
+                ).exclude(activityType__in=[constants.INCAIRO, constants.OFFDAY])
                 for week in calendar.monthcalendar(date.year, date.month):
                     for day in week:
                         # Check if Thursday and Saturday are off-days in the current week
@@ -798,6 +796,12 @@ class ActivityViewSet(viewsets.ModelViewSet):
                             # If either Thursday or Saturday is off-day, decrement working_days
                             if thursday_offday and saturday_offday and friday_offday:
                                 total_working_days_cairo -= 1
+
+                start_date = date.replace(day=1)
+                end_date = date.replace(day=calendar.monthrange(date.year, date.month)[1])
+                end_date = end_date + relativedelta(days=1)
+
+                total_working_days_japan = np.busday_count(start_date, end_date, weekmask='0011111')
 
                 activities_japan = Activity.objects.filter(
                     user=user,
