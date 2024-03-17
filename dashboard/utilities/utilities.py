@@ -97,7 +97,8 @@ def convert_company_to_choice(company_string):
 def generate_username_from_name(name, taken_usernames):
     # Split the name and create a base username
     name_parts = name.split()
-    base_username = "_".join(name_parts[:2]).lower()  # Take the first two names and join with an underscore.
+    base_username = f"{name_parts[0]}_{name_parts[-2]}{name_parts[-1]}".lower()
+
     # Initialize a counter
     counter = 0
     unique_username = base_username

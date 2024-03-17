@@ -278,6 +278,7 @@ class UserViewSet(viewsets.ModelViewSet):
                 if User.objects.filter(username=new_username).exists() or User.objects.filter(email=email).exists():
                     # Skip this row if the username already exists
                     continue
+
                 # Create a new User object
                 user = User(
                     username = new_username,  # Assuming the username is the name, you might want to format this.
