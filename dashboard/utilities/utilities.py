@@ -423,11 +423,11 @@ def __add_cover_sheet__(wb, current_month_name, current_year, user, current_date
         'B5': 'E',
     }
 
-    # Set the letter 'P' in the corresponding cell based on the user's grade
+    # Set the letter '/' in the corresponding cell based on the user's grade
     if user_grade in grade_mapping:
         grade_column = grade_mapping[user_grade]
         cell_address = f'{grade_column}11'
-        cover_ws[cell_address].value = 'P'
+        cover_ws[cell_address].value = '/'
         cover_ws[cell_address].alignment = Alignment(horizontal='center', vertical='center')
 
     # Set borders for various cells
@@ -466,11 +466,11 @@ def __add_cover_sheet__(wb, current_month_name, current_year, user, current_date
         'LOC': 'E',  # Column for Local
     }
 
-    # Set the letter 'P' in the corresponding cell and center it
+    # Set the letter '/' in the corresponding cell and center it
     if user_nationality in nationality_mapping:
         nationality_column = nationality_mapping[user_nationality]
         cell_address = f'{nationality_column}18'
-        cover_ws[cell_address].value = 'P'
+        cover_ws[cell_address].value = '/'
         cover_ws[cell_address].alignment = Alignment(horizontal='center', vertical='center')
 
         # Apply border
