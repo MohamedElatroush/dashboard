@@ -136,3 +136,12 @@ BORDER_STYLE = Border(top=Side(style='thin', color='000000'),
                      left=Side(style='thin', color='000000'),
                      right=Side(style='thin', color='000000'),
                      bottom=Side(style='thin', color='000000'))
+
+DEP_MAPPING = {
+    VCH: 'Vice Chairman',
+    FUD: 'Follow Up Department',
+    TD: 'Technical Department',
+    CWD: 'Civil Work Department',
+    PSD: 'Power Supply Department',
+    RSMD: 'Rolling Stock & Mechanical Department',
+}

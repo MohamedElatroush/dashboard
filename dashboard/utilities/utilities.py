@@ -831,6 +831,11 @@ def create_activity_excel_report(users, activities, selected_date, companyName, 
     response["Content-Disposition"] = f'attachment; filename=timesheet.xlsx'
     return response
 
+def __department_mapping__(dep_nat):
+    group = constants.DEP_MAPPING.get(dep_nat, 'Unknown')
+    return group
+
+
 def __customize_sheet__(sheet, dep_nat, selected_date):
     # Add a logo at the top right
     script_directory = os.path.dirname(os.path.abspath(__file__))
@@ -845,10 +850,12 @@ def __customize_sheet__(sheet, dep_nat, selected_date):
     # Get the number for the current dep_nat
     dep_nat_number = nat_group_mapping_reverse.get(dep_nat, -1)
 
+    department = __department_mapping__(dep_nat_number)
+
     users = User.objects.filter(natGroup=dep_nat_number)
 
     # Set the title in the middle
-    title_cell = sheet.cell(row=5, column=1, value=f"Dep NAT: {dep_nat}")
+    title_cell = sheet.cell(row=5, column=1, value=f"Dep NAT: {department}")
     title_cell.font = Font(size=16, bold=True)
     title_cell.alignment = Alignment(horizontal="center")
 
