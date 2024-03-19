@@ -13,8 +13,7 @@ import numpy as np
 from openpyxl.utils import get_column_letter
 from collections import defaultdict
 from io import BytesIO
-from django.core.files.base import ContentFile
-import boto3
+from dateutil.relativedelta import relativedelta
 
 def generate_unique_id():
     new_id = "EMP_" + str(uuid.uuid1())
@@ -162,7 +161,7 @@ def __add_local_working_days__(current_date, user, cover_ws):
             user=user,
             activityDate__month=current_date.date().month,
             activityDate__year=current_date.date().year,
-        ).filter(activityType__in=[constants.OFFDAY])
+        ).filter(activityType__in=[constants.INCAIRO, constants.HOLIDAY])
 
         # Count the number of activities
         working_days = activities.count()
@@ -184,7 +183,17 @@ def __add_local_working_days__(current_date, user, cover_ws):
         cover_ws['G38'].value = total_working_days
         cover_ws['G38'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
 
-        cover_ws['C38'].value = 0
+        start_date = current_date.date().replace(day=1)
+        end_date = current_date.date().replace(day=calendar.monthrange(current_date.date().year, current_date.date().month)[1])
+        end_date = end_date + relativedelta(days=1)
+
+        activities_japan = Activity.objects.filter(
+            user=user,
+            activityDate__month=current_date.date().month,
+            activityDate__year=current_date.date().year,
+        ).filter(activityType__in=[constants.HOMEASSIGN]).count()
+
+        cover_ws['C38'].value = activities_japan
         cover_ws['C38'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
 
         cover_ws['J38'].value = round(cover_ws['D38'].value / cover_ws['G38'].value, 3)
@@ -230,8 +239,19 @@ def __add_expert_working_days__(current_date, user, cover_ws):
         cover_ws['F38'].value = total_working_days
         cover_ws['F38'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
 
+        start_date = current_date.date().replace(day=1)
+        end_date = current_date.date().replace(day=calendar.monthrange(current_date.date().year, current_date.date().month)[1])
+        end_date = end_date + relativedelta(days=1)
+
+        activities_cairo_count = Activity.objects.filter(
+            user=user,
+            activityDate__month=current_date.date().month,
+            activityDate__year=current_date.date().year,
+            activityType__in=[constants.INCAIRO, constants.HOLIDAY]
+        ).count()
+
         # Cairo NOD
-        cover_ws['D38'].value = 0
+        cover_ws['D38'].value = activities_cairo_count
         cover_ws['D38'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
 
         # Cairo TCD
@@ -244,7 +264,7 @@ def __add_expert_working_days__(current_date, user, cover_ws):
         cover_ws['I38'].alignment = Alignment(horizontal='center', vertical='center')
 
         # Cairo NOD/TCD
-        cover_ws['J38'].value = 0
+        cover_ws['J38'].value = round(cover_ws['D38'].value / cover_ws['G38'].value, 3)
         cover_ws['J38'].font = Font(size=11)
         cover_ws['J38'].alignment = Alignment(horizontal='center', vertical='center')
 
@@ -255,7 +275,7 @@ def set_borders(ws, row, columns):
                                         left=Side(style='thin', color='000000'),
                                         right=Side(style='thin', color='000000'),
                                         bottom=Side(style='thin', color='000000'))
-        
+
 def __format_cell__(cell, value, size=11, italic=False, center=True):
     cell.value = value
     cell.font = Font(size=size, italic=True)
@@ -861,9 +881,10 @@ def __customize_sheet__(sheet, dep_nat, selected_date):
 
     # Merge cells for the title
     sheet.merge_cells(start_row=5, start_column=1, end_row=5, end_column=8)
-
+    selected_date = datetime.strptime(selected_date, '%Y-%m-%d')
+    month_name = calendar.month_name[selected_date.month]
     # Set the selected date below the title
-    date_cell = sheet.cell(row=6, column=2, value=f"{selected_date}")
+    date_cell = sheet.cell(row=6, column=2, value=f"{month_name}")
     date_cell.font = Font(size=14)
     date_cell.alignment = Alignment(horizontal="center")
 
