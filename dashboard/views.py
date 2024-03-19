@@ -739,20 +739,20 @@ class ActivityViewSet(viewsets.ModelViewSet):
                     user=user,
                     activityDate__month=date.month,
                     activityDate__year=date.year,
-                ).exclude(activityType__in=[constants.OFFDAY, constants.INCAIRO])
+                    activityType__in=[constants.HOMEASSIGN]
+                )
 
                 # Count the number of activities
                 working_days_japan = activities.count()
-
                 last_day_of_month = calendar.monthrange(date.year, date.month)[1]
                 end_date = date.replace(day=last_day_of_month) + timedelta(days=1)
+
                 total_working_days_cairo = np.busday_count(start_date, end_date, weekmask='1111111')
                 working_days_cairo = Activity.objects.filter(
                     user=user,
                     activityDate__month=date.month,
                     activityDate__year=date.year,
-                ).exclude(activityType__in=[constants.HOMEASSIGN, constants.OFFDAY]).count()
-                # Append user data to the response
+                ).filter(activityType__in=[constants.HOLIDAY, constants.INCAIRO]).count()
                 data.append({
                     'user__id': user.id,
                     'user__first_name': user.first_name,
@@ -769,6 +769,7 @@ class ActivityViewSet(viewsets.ModelViewSet):
                 last_day_of_month = calendar.monthrange(date.year, date.month)[1]
                 end_date = date.replace(day=last_day_of_month) + timedelta(days=1)
                 total_working_days_cairo = np.busday_count(start_date, end_date, weekmask='1111111')
+                total_working_days_japan = np.busday_count(start_date, end_date, weekmask='0011111')
                 # Iterate through each day in the range
 
                 # Filter activities for the current user and month excluding 'H' type activities
@@ -776,7 +777,8 @@ class ActivityViewSet(viewsets.ModelViewSet):
                     user=user,
                     activityDate__month=date.month,
                     activityDate__year=date.year,
-                ).exclude(activityType__in=[constants.OFFDAY, constants.HOMEASSIGN])
+                    activityType__in=[constants.HOLIDAY, constants.INCAIRO]
+                )
 
                 # Count the number of activities
                 working_days_cairo = activities_cairo.count()
@@ -785,7 +787,9 @@ class ActivityViewSet(viewsets.ModelViewSet):
                     user=user,
                     activityDate__month=date.month,
                     activityDate__year=date.year,
-                ).exclude(activityType__in=[constants.INCAIRO, constants.OFFDAY])
+                    activityType__in=[constants.HOLIDAY, constants.INCAIRO]
+                )
+
                 for week in calendar.monthcalendar(date.year, date.month):
                     for day in week:
                         # Check if Thursday and Saturday are off-days in the current week
@@ -808,7 +812,7 @@ class ActivityViewSet(viewsets.ModelViewSet):
                     user=user,
                     activityDate__month=date.month,
                     activityDate__year=date.year,
-                ).exclude(activityType__in=[constants.OFFDAY, constants.INCAIRO])
+                ).filter(activityType__in=[constants.HOMEASSIGN])
                 working_days_japan = activities_japan.count()
 
                 # Append user data to the response

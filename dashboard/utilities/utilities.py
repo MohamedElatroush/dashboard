@@ -162,7 +162,7 @@ def __add_local_working_days__(current_date, user, cover_ws):
             user=user,
             activityDate__month=current_date.date().month,
             activityDate__year=current_date.date().year,
-        ).exclude(activityType=constants.OFFDAY)
+        ).filter(activityType__in=[constants.OFFDAY])
 
         # Count the number of activities
         working_days = activities.count()
@@ -219,7 +219,7 @@ def __add_expert_working_days__(current_date, user, cover_ws):
             user=user,
             activityDate__month=current_date.date().month,
             activityDate__year=current_date.date().year,
-        ).exclude(activityType=constants.OFFDAY)
+        ).filter(activityType__in=[constants.HOMEASSIGN])
 
         # Count the number of activities
         working_days = activities.count()
