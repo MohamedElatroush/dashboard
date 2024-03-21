@@ -19,7 +19,7 @@ from django.contrib.auth.tokens import default_token_generator
 from datetime import date, datetime, timedelta
 from openpyxl import Workbook
 from openpyxl.utils import get_column_letter
-from openpyxl.styles import Alignment
+from openpyxl.styles import Alignment, PatternFill
 from io import BytesIO
 from django.http import HttpResponse
 import pandas as pd
@@ -319,6 +319,458 @@ class UserViewSet(viewsets.ModelViewSet):
                                                           password=make_password(serializer.validated_data['password']))
             return Response(data=constants.SUCCESSFULLY_CHANGED_PASSWORD, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    def __add_local_working_days_individual__(self, current_date, user, cover_ws):
+        start_date = current_date.replace(day=1)
+        last_day_of_month = calendar.monthrange(current_date.year, current_date.month)[1]
+        end_date = (current_date + timedelta(days=last_day_of_month)).replace(day=1)
+
+        # Adjust end_date to the next day
+        end_date = end_date + timedelta(days=1)
+
+        total_working_days_expert = np.busday_count(start_date, end_date, weekmask='0011111')
+        cover_ws['F38'].value = total_working_days_expert
+        cover_ws['F38'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
+
+        start_date = current_date.replace(day=1)
+        last_day_of_month = calendar.monthrange(current_date.year, current_date.month)[1]
+        end_date = current_date.replace(day=last_day_of_month)
+
+        last_day_of_month = calendar.monthrange(current_date.year, current_date.month)[1]
+        end_date = current_date.replace(day=last_day_of_month) + timedelta(days=1)
+        total_working_days = np.busday_count(start_date, end_date, weekmask='1111111')
+
+        # Iterate through each day in the range
+        for day in range(1, last_day_of_month + 1):
+            day_off = Activity.objects.filter(
+                user=user,
+                activityDate__day=current_date.day,
+                activityDate__month=current_date.month,
+                activityDate__year=current_date.year,
+                activityType=constants.OFFDAY,
+            ).exists()
+
+            if day_off and (day == 5 and day - 1 in (4, 6) and day + 1 in (4, 6)):
+                total_working_days -= 1
+
+            # Filter activities for the current user and month excluding 'H' type activities
+            activities = Activity.objects.filter(
+                user=user,
+                activityDate__month=current_date.month,
+                activityDate__year=current_date.year,
+            ).filter(activityType__in=[constants.INCAIRO, constants.HOLIDAY])
+
+            # Count the number of activities
+            working_days = activities.count()
+            # Iterate over weeks in the month
+            for week in calendar.monthcalendar(current_date.year, current_date.month):
+                for day in week:
+                    # Check if Thursday and Saturday are off-days in the current week
+                    if day != 0:  # Ignore days that belong to the previous or next month (represented as 0)
+                        thursday_offday = any(activity.activityType == constants.OFFDAY for activity in activities.filter(activityDate__day=day + 3))
+                        saturday_offday = any(activity.activityType == constants.OFFDAY for activity in activities.filter(activityDate__day=day + 5))
+
+                        # If either Thursday or Saturday is off-day, decrement working_days
+                        if thursday_offday or saturday_offday:
+                            working_days -= 1
+
+            # Add "0" under "Cairo" for local users
+            cover_ws['D38'].value = working_days
+            cover_ws['D38'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
+            cover_ws['G38'].value = total_working_days
+            cover_ws['G38'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
+
+            start_date = current_date.replace(day=1)
+            end_date = current_date.replace(day=calendar.monthrange(current_date.year, current_date.month)[1])
+            end_date = end_date + relativedelta(days=1)
+
+            activities_japan = Activity.objects.filter(
+                user=user,
+                activityDate__month=current_date.month,
+                activityDate__year=current_date.year,
+            ).filter(activityType__in=[constants.HOMEASSIGN]).count()
+
+            cover_ws['C38'].value = activities_japan
+            cover_ws['C38'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
+
+            cover_ws['J38'].value = round(cover_ws['D38'].value / cover_ws['G38'].value, 3)
+            cover_ws['J38'].font = Font(size=11)
+            cover_ws['J38'].alignment = Alignment(horizontal='center', vertical='center')
+
+            # Japan NOD/TCD
+            cover_ws['I38'].value = round(cover_ws['C38'].value / cover_ws['F38'].value, 3)
+            cover_ws['I38'].font = Font(size=11)
+            cover_ws['I38'].alignment = Alignment(horizontal='center', vertical='center')
+
+    def __add_expert_working_days_individual__(self, current_date, user, cover_ws):
+            ###### LOCAL ######
+            start_date = current_date.replace(day=1)
+            last_day_of_month = calendar.monthrange(current_date.year, current_date.month)[1]
+            end_date = current_date.replace(day=last_day_of_month)
+
+            last_day_of_month = calendar.monthrange(current_date.year, current_date.month)[1]
+            end_date = current_date.replace(day=last_day_of_month) + timedelta(days=1)
+            total_working_days_cairo = np.busday_count(start_date, end_date, weekmask='1111111')
+            ###### LOCAL ######
+            start_date = current_date.replace(day=1)
+            last_day_of_month = calendar.monthrange(current_date.year, current_date.month)[1]
+            end_date = (current_date + timedelta(days=last_day_of_month)).replace(day=1)
+
+            # Adjust end_date to the next day
+            end_date = end_date + timedelta(days=1)
+            total_working_days = np.busday_count(start_date, end_date, weekmask='0011111')
+
+            # Filter activities for the current user and month excluding 'H' type activities
+            activities = Activity.objects.filter(
+                user=user,
+                activityDate__month=current_date.month,
+                activityDate__year=current_date.year,
+            ).filter(activityType__in=[constants.HOMEASSIGN])
+
+            # Count the number of activities
+            working_days = activities.count()
+
+            cover_ws['C38'].value = working_days
+            cover_ws['C38'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
+
+            cover_ws['F38'].value = total_working_days
+            cover_ws['F38'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
+
+            start_date = current_date.replace(day=1)
+            end_date = current_date.replace(day=calendar.monthrange(current_date.year, current_date.month)[1])
+            end_date = end_date + relativedelta(days=1)
+
+            activities_cairo_count = Activity.objects.filter(
+                user=user,
+                activityDate__month=current_date.month,
+                activityDate__year=current_date.year,
+                activityType__in=[constants.INCAIRO, constants.HOLIDAY]
+            ).count()
+
+            # Cairo NOD
+            cover_ws['D38'].value = activities_cairo_count
+            cover_ws['D38'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
+
+            # Cairo TCD
+            cover_ws['G38'].value = total_working_days_cairo
+            cover_ws['G38'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
+
+            # Japan NOD/TCD
+            cover_ws['I38'].value = round(cover_ws['C38'].value / cover_ws['F38'].value, 3)
+            cover_ws['I38'].font = Font(size=11)
+            cover_ws['I38'].alignment = Alignment(horizontal='center', vertical='center')
+
+            # Cairo NOD/TCD
+            cover_ws['J38'].value = round(cover_ws['D38'].value / cover_ws['G38'].value, 3)
+            cover_ws['J38'].font = Font(size=11)
+            cover_ws['J38'].alignment = Alignment(horizontal='center', vertical='center')
+
+    def __add_individual_timesheet__(self, wb, current_month_name, current_year, user, current_date, current_month):
+        # Create cover page
+        start_date = current_date.replace(day=1)
+        last_day_of_month = calendar.monthrange(current_date.year, current_date.month)[1]
+        end_date = current_date.replace(day=last_day_of_month)
+
+        cover_ws = wb.create_sheet(title=str(user.first_name))
+
+        cover_ws.merge_cells('A3:G3')
+        cover_ws['A3'].value = constants.COVER_TS_TEXT
+        cover_ws['A6'].font = Font(size=11)
+        cover_ws['A3'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
+
+        cover_ws.merge_cells('A6:G6')  # Adjust the cell range as needed
+        cover_ws['A6'].value = 'Monthly Time Sheet'
+        cover_ws['A6'].font = Font(size=16, italic=True)  # Set font size and make it italic
+        cover_ws['A6'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
+
+        cover_ws['A7'].value = 'Month:'
+        cover_ws.merge_cells('B7:C7')
+        cover_ws['B7'].value = current_month_name
+        cover_ws['B7'].font = Font(size=12, italic=True, bold=True)  # Set font size and make it italic
+        cover_ws['B7'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
+
+        # add the year
+        cover_ws['F7'].value = 'Year:'
+        cover_ws['G7'].value = current_year
+        cover_ws['G7'].font = Font(size=12, italic=True, bold=True)  # Set font size and make it italic
+        cover_ws['G7'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
+        cover_ws['F7'].font = Font(size=12, italic=True, bold=True)  # Set font size and make it italic
+        cover_ws['F7'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
+
+        # add the logo
+        script_directory = os.path.dirname(os.path.abspath(__file__))
+        parent_parent_directory = os.path.dirname(script_directory)
+        logo_path = os.path.join(parent_parent_directory, 'static', 'images', 'logo.png')
+        img = Image(logo_path)
+        cover_ws.add_image(img, 'I2')
+
+        # add the name
+        cover_ws.merge_cells('B9:C9')
+        cover_ws['A9'].value = 'Name:'
+        cover_ws['B9'].value = str(user.get_full_name())
+
+        user_grade = user.get_grade()
+
+        cover_ws['A11'].value = 'Category:'
+        cover_ws['D11'].value = 'A1'
+        cover_ws['F11'].value = 'A2'
+        cover_ws['H11'].value = 'A3'
+        cover_ws['D13'].value = 'B1'
+        cover_ws['F13'].value = 'B2'
+        cover_ws['H13'].value = 'B3'
+        cover_ws['D15'].value = 'B4'
+        cover_ws['F15'].value = 'B5'
+
+        # Mapping of grades to corresponding columns
+        grade_mapping = {
+            'A1': 'C',
+            'A2': 'E',
+            'A3': 'G',
+            'B1': 'C',
+            'B2': 'E',
+            'B3': 'G',
+            'B4': 'C',
+            'B5': 'E',
+        }
+
+        # Set the letter '/' in the corresponding cell based on the user's grade
+        if user_grade in grade_mapping:
+            grade_column = grade_mapping[user_grade]
+            cell_address = f'{grade_column}11'
+            cover_ws[cell_address].value = '/'
+            cover_ws[cell_address].alignment = Alignment(horizontal='center', vertical='center')
+
+        # Set borders for various cells
+        utilities.set_borders(cover_ws, 11, ['C', 'E', 'G'])
+        utilities.set_borders(cover_ws, 13, ['C', 'E', 'G'])
+        utilities.set_borders(cover_ws, 15, ['C', 'E'])
+
+        for col in ['C', 'E', 'G']:
+            cell_address = f'{col}11'
+            cover_ws[cell_address].border = Border(top=Side(style='thin', color='000000'), left=Side(style='thin', color='000000'),
+                                                right=Side(style='thin', color='000000'), bottom=Side(style='thin', color='000000'))
+        for col in ['C', 'E', 'G']:
+            cell_address = f'{col}13'
+            cover_ws[cell_address].border = Border(top=Side(style='thin', color='000000'), left=Side(style='thin', color='000000'),
+                                                right=Side(style='thin', color='000000'), bottom=Side(style='thin', color='000000'))
+        for col in ['C', 'E']:
+            cell_address = f'{col}15'
+            cover_ws[cell_address].border = Border(top=Side(style='thin', color='000000'), left=Side(style='thin', color='000000'),
+                                                right=Side(style='thin', color='000000'), bottom=Side(style='thin', color='000000'))
+
+        cover_ws['A18'].value = 'Nationality:'
+        cover_ws['A18'].font = Font(size=11, italic=True, bold=True)
+
+        cover_ws['D18'].value = 'Expatriate'
+        cover_ws['D18'].font = Font(size=10, bold=True)
+
+        cover_ws['F18'].value = 'Local'
+        cover_ws['F18'].font = Font(size=10, bold=True)
+
+        # Get the user's nationality
+        user_nationality = user.get_expert()
+
+        # Mapping of nationalities to corresponding columns
+        nationality_mapping = {
+            'EXP': 'C',  # Column for Expatriate
+            'LOC': 'E',  # Column for Local
+        }
+
+        # Set the letter '/' in the corresponding cell and center it
+        if user_nationality in nationality_mapping:
+            nationality_column = nationality_mapping[user_nationality]
+            cell_address = f'{nationality_column}18'
+            cover_ws[cell_address].value = '/'
+            cover_ws[cell_address].alignment = Alignment(horizontal='center', vertical='center')
+
+            # Apply border
+            cover_ws[cell_address].border = Border(top=Side(style='thin', color='000000'),
+                                                left=Side(style='thin', color='000000'),
+                                                right=Side(style='thin', color='000000'),
+                                                bottom=Side(style='thin', color='000000'))
+
+        for col in ['C', 'E']:
+            cell_address = f'{col}18'
+            cover_ws[cell_address].border = Border(top=Side(style='thin', color='000000'), left=Side(style='thin', color='000000'),
+                                                right=Side(style='thin', color='000000'), bottom=Side(style='thin', color='000000'))
+
+
+        cover_ws['A21'].value = 'Group Field:'
+        cover_ws['A21'].font = Font(size=11, italic=True, bold=True)
+
+        cover_ws.merge_cells('D21:E21')
+        cover_ws.merge_cells('H21:I21')
+
+        cover_ws['D21'].value = 'Management and SHQE'
+        cover_ws['D21'].font = Font(size=10)
+
+        cover_ws['H21'].value = 'Tender Evaluation and Contract Negotiation'
+        cover_ws['H21'].font = Font(size=10)
+
+        cover_ws.merge_cells('D23:E23')
+        cover_ws.merge_cells('H23:I23')
+
+        cover_ws['D23'].value = 'Construction Supervision'
+        cover_ws['D23'].font = Font(size=10)
+
+        cover_ws['H23'].value = 'O&M'
+        cover_ws['H23'].font = Font(size=10)
+
+        for col in ['C', 'G']:
+            cell_address = f'{col}21'
+            cover_ws[cell_address].border = Border(top=Side(style='thin', color='000000'), left=Side(style='thin', color='000000'),
+                                                right=Side(style='thin', color='000000'), bottom=Side(style='thin', color='000000'))
+        for col in ['C', 'G']:
+            cell_address = f'{col}23'
+            cover_ws[cell_address].border = Border(top=Side(style='thin', color='000000'), left=Side(style='thin', color='000000'),
+                                                right=Side(style='thin', color='000000'), bottom=Side(style='thin', color='000000'))
+
+        first_day_of_month = datetime(current_year, current_month, 1)
+        for i in range(1, 17):
+            col_address = chr(ord('C') + (i - 1))  # Alternating columns C and G
+            cell_address = f'{col_address}27'
+            day_of_week = (first_day_of_month + timedelta(days=i - 1)).strftime("%a")  # Get the abbreviated day name
+            cover_ws[cell_address].value = day_of_week
+
+            col_address = chr(ord('C') + (i - 1))
+            cell_address = f'{col_address}28'
+            cover_ws[str(cell_address)].value = str((first_day_of_month + timedelta(days=i - 1)).day)
+
+            col_address = chr(ord('C') + (i - 1))
+            cell_address_activity_type = f'{col_address}29'
+
+            # Replace 'activity_date' with the actual date for which you want to retrieve the activityType
+            activity_date = first_day_of_month + timedelta(days=i - 1)
+            activity_instance = Activity.objects.filter(user=user, activityDate=activity_date).first()
+
+            if activity_instance:
+                cover_ws[cell_address_activity_type].value = str(activity_instance.get_activity_type())
+            else:
+                cover_ws[cell_address_activity_type].value = None
+
+        first_day_of_second_half = datetime(current_year, current_month, 17).date()
+
+        # Write abbreviated weekdays in row 30 for the second half of the month
+        for i in range(0, calendar.monthrange(current_year, current_month)[1] - 16):
+            col_address = chr(ord('C') + i) + '30'
+            day_of_week = (first_day_of_second_half + timedelta(days=i)).strftime("%a")  # Get the abbreviated day name
+            cover_ws[col_address].value = day_of_week
+
+
+        # Continue writing the numeric values for the remaining days in the row below (row 30)
+        for i in range(17, calendar.monthrange(current_year, current_month)[1] + 1):
+            col_address = chr(ord('C') + (i - 17))
+            cell_address = f'{col_address}31'
+            cover_ws[cell_address].value = (first_day_of_month + timedelta(days=i - 1)).day
+
+        # Add the corresponding user activities in row 32
+        for i in range(17, calendar.monthrange(current_year, current_month)[1] + 1):
+            col_address_activity_type = chr(ord('C') + (i - 17)) + '32'
+
+            activity_date = datetime(current_year, current_month, 17) + timedelta(days=i - 17)
+            activity_instance = Activity.objects.filter(user=user, activityDate=activity_date).first()
+
+            if activity_instance:
+                cover_ws[col_address_activity_type].value = str(activity_instance.get_activity_type())
+            else:
+                cover_ws[col_address_activity_type].value = None
+
+        for row in range(36, 38):
+            for col_letter in ['C', 'D', 'F', 'G', 'I', 'J']:
+                cell = cover_ws[col_letter + str(row)]
+                cell.border = Border(
+                    left=Side(style='thin', color='000000' if col_letter != 'C' else '000000'),
+                    right=Side(style='thin', color='000000' if col_letter != 'J' else '000000'),
+                    top=Side(style='thin', color='000000'),
+                    bottom=Side(style='thin', color='000000')
+                )
+        # add summary for working days
+        cover_ws.merge_cells('C36:D36')
+        cover_ws['C36'].value = "No. of Days (NOD)*"
+        cover_ws['C36'].font = Font(size=11, bold=True)
+        cover_ws['C36'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
+        cover_ws['C36'].fill = PatternFill(start_color='C0C0C0', end_color='C0C0C0', fill_type='solid')
+
+        start_date = current_date.replace(day=1)
+        last_day_of_month = calendar.monthrange(current_date.year, current_date.month)[1]
+        end_date = current_date.replace(day=last_day_of_month)
+        total_working_days = np.busday_count(start_date, end_date, weekmask='0011111')
+        cover_ws['F38'].value = total_working_days
+        cover_ws['F38'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
+
+        # Assuming user is an instance of the User model
+        if user.expert == constants.LOCAL_USER:
+            self.__add_local_working_days_individual__(current_date, user, cover_ws)
+        elif user.expert == constants.EXPERT_USER:
+            self.__add_expert_working_days_individual__(current_date, user, cover_ws)
+
+        cover_ws.merge_cells('F36:G36')
+        cover_ws['F36'].value = "Total Calendar Days (TCD)"
+        cover_ws['F36'].font = Font(size=10, bold=True)
+        cover_ws['F36'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
+        cover_ws['F36'].fill = PatternFill(start_color='C0C0C0', end_color='C0C0C0', fill_type='solid')
+
+        cover_ws['C37'].value = "Japan"
+        cover_ws['C37'].font = Font(size=11, bold=True)
+        cover_ws['C37'].alignment = Alignment(horizontal='center', vertical='center')
+
+        cover_ws['D37'].value = "Cairo"
+        cover_ws['D37'].font = Font(size=11, bold=True)
+        cover_ws['D37'].alignment = Alignment(horizontal='center', vertical='center')
+
+
+        cover_ws['F37'].value = "Japan"
+        cover_ws['F37'].font = Font(size=11, bold=True)
+        cover_ws['F37'].alignment = Alignment(horizontal='center', vertical='center')
+
+        cover_ws['G37'].value = "Cairo"
+        cover_ws['G37'].font = Font(size=11, bold=True)
+        cover_ws['G37'].alignment = Alignment(horizontal='center', vertical='center')
+
+        cover_ws.merge_cells('I36:J36')
+        cover_ws['I36'].value = "Consumption NOD/TCD"
+        cover_ws['I36'].font = Font(size=11, bold=True)
+        cover_ws['I36'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
+        cover_ws['I36'].fill = PatternFill(start_color='C0C0C0', end_color='C0C0C0', fill_type='solid')
+
+        cover_ws['I37'].value = "Japan"
+        cover_ws['I37'].font = Font(size=11, bold=True)
+        cover_ws['I37'].alignment = Alignment(horizontal='center', vertical='center')
+
+        cover_ws['J37'].value = "Cairo"
+        cover_ws['J37'].font = Font(size=11, bold=True)
+        cover_ws['J37'].alignment = Alignment(horizontal='center', vertical='center')
+
+        # Project Director cell (B42)
+        utilities.__format_cell__(cover_ws['B42'], "Project Director")
+
+        # NAT Approval cell (L42)
+        utilities.__format_cell__(cover_ws['L42'], "NAT Approval")
+
+        for col_letter in range(ord('A'), ord('S')):
+            col_letter = chr(col_letter)
+            cell = cover_ws[col_letter + '45']
+            cell.border = Border(bottom=Side(style='thick'))
+
+        cover_ws.merge_cells('B47:D47')
+        cover_ws['B47'].value = "J = Working day In Japan"
+        cover_ws['B47'].font = Font(size=11, bold=True)
+
+        cover_ws.merge_cells('M47:O47')
+        cover_ws['M47'].value = "C = Working day In Cairo"
+        cover_ws['M47'].font = Font(size=11, bold=True)
+
+        cover_ws.merge_cells('B49:D49')
+        cover_ws['B49'].value = "H = Official Holiday In Cairo"
+        cover_ws['B49'].font = Font(size=11, bold=True)
+
+        cover_ws.merge_cells('M49:O49')
+        cover_ws['M49'].value = "X = Day off"
+        cover_ws['M49'].font = Font(size=11, bold=True)
+
+        cover_ws.merge_cells('B51:P51')
+        cover_ws['B51'].value = "Note: According to the contract 81/M the total days are working days in Cairo plus to official holiday in Egypt *NOD=C (Working day in Cairo)+H (Official Holiday in Egypt)"
+
 
     @action(detail=False, methods=['GET'], url_path=r'extract_timesheet/(?P<userId>\w+(?:-\w+)*)', serializer_class=UserTimeSheetSerializer)
     def extract_timesheet(self, request, *args, **kwargs):
@@ -422,6 +874,13 @@ class UserViewSet(viewsets.ModelViewSet):
 
             if user.expert in [constants.LOCAL_USER, constants.EXPERT_USER]:
                 ws.cell(row=row_index, column=3 if activities_type == "J" else 2, value=activities_type)
+
+        # Get the current month and year
+        current_month_name = date.strftime("%B")
+
+        self.__add_individual_timesheet__(wb=wb, current_month_name=current_month_name,\
+                                           current_year=date.year, user=user, current_date=date,\
+                                            current_month=date.month)
 
         excel_data = BytesIO()
         wb.save(excel_data)
