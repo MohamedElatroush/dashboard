@@ -272,6 +272,8 @@ class UserViewSet(viewsets.ModelViewSet):
                     calendar_type = constants.CALENDAR_TYPE_EXPERT
                 elif expert_choice == constants.LOCAL_USER:
                     calendar_type = constants.CALENDAR_TYPE_LOCAL
+                else:
+                    calendar_type = None
 
                 email = row['Email Address'] if pd.notnull(row['Email Address']) else None
                 new_username = utilities.generate_username_from_name(name, all_usernames)
