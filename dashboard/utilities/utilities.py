@@ -96,7 +96,7 @@ def convert_company_to_choice(company_string):
 def generate_username_from_name(name, taken_usernames):
     # Split the name and create a base username
     name_parts = name.split()
-    base_username = f"{name_parts[0]}_{name_parts[-2]}{name_parts[-1]}".lower()
+    base_username = f"{name_parts[0]}_{name_parts[-1]}".lower()
 
     # Initialize a counter
     counter = 0
@@ -105,7 +105,7 @@ def generate_username_from_name(name, taken_usernames):
     # Check if the username exists in the taken usernames set and find a unique one by appending a number
     while unique_username in taken_usernames:
         counter += 1
-        unique_username = f"{base_username}{counter}"
+        unique_username = f"{base_username}_{counter}"
 
     # Add the new unique username to the taken usernames set
     taken_usernames.add(unique_username)
@@ -788,17 +788,32 @@ def create_activity_excel_report(users, activities, selected_date, companyName, 
         total_working_days_cairo = 0
         japan_count = 0
         total_working_days_japan = 0
+        if user_data['expert'] == constants.EXPERT_LOCAL_CHOICES[constants.EXPERT_USER][1]:
+            start_date = current_date.replace(day=1)
+            end_date = current_date.replace(day=calendar.monthrange(current_date.year, current_date.month)[1])
+            end_date = end_date + relativedelta(days=1)
+            # Convert start_date and end_date to datetime64[D]
+            start_date = np.datetime64(start_date, 'D')
+            end_date = np.datetime64(end_date, 'D')
+
+            total_working_days_cairo = np.busday_count(start_date, end_date, weekmask='1111111')
+            total_working_days_japan = np.busday_count(start_date, end_date, weekmask='0011111')
+
+        elif user_data['expert'] == constants.EXPERT_LOCAL_CHOICES[constants.LOCAL_USER][1]:
+            start_date = current_date.replace(day=1)
+            last_day_of_month = calendar.monthrange(current_date.year, current_date.month)[1]
+            end_date = current_date.replace(day=last_day_of_month)
+            last_day_of_month = calendar.monthrange(current_date.year, current_date.month)[1]
+            end_date = current_date.replace(day=last_day_of_month) + timedelta(days=1)
+            total_working_days_cairo = np.busday_count(start_date, end_date, weekmask='1111111')
+            total_working_days_japan = np.busday_count(start_date, end_date, weekmask='0011111')
+            
         for col, activity_type in user_data['activities'].items():
-            # calculate total possible days
-            if activity_type not in ['H']:
-                total_working_days_japan += 1
-                total_working_days_cairo += 1
-
-            if user_data['expert'] == 'EXP' and activity_type not in ['X', 'H', '']:
+            if (activity_type == 'J'):
                 japan_count += 1
-            if user_data['expert'] == 'LOC' and activity_type not in ['X', 'H', '']:
+            if activity_type in ['C', 'H']:
                 cairo_count += 1
-
+            
             ws.cell(row=row_num, column=col + 11, value=str(activity_type)).font = font
             if "C" in activity_type:
                 green_fill = PatternFill(start_color="A8D08D", end_color="A8D08D", fill_type="solid")
@@ -826,8 +841,6 @@ def create_activity_excel_report(users, activities, selected_date, companyName, 
 
         ws.cell(row=row_num, column=7 + 3, value=cairo_percentage).font = red_bold_italic_font
         ws.cell(row=row_num, column=7 + 4, value=japan_percentage).font = red_bold_italic_font
-
-        user_details = user_data.get('user_details', {})
 
         for cell in ws[row_num]:
             cell.border = thin_border
