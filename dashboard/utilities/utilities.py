@@ -302,51 +302,129 @@ def __add_daily_activities_sheet__(wb, current_date, user):
     bottom=Side(border_style='thin')
 )
 
-    # Write the month and year headers at the top
-    daily_activities.cell(row=1, column=1, value="Year")
-    daily_activities.cell(row=1, column=1).border = name_year_month_border
+    # Merge cells for the new section
+    daily_activities.merge_cells(start_row=2, start_column=2, end_row=5, end_column=10)
+    for row in range(2, 6):
+        for col in range(2, 11):
+            cell = daily_activities.cell(row=row, column=col)
+            cell.border = name_year_month_border
 
-    daily_activities.cell(row=1, column=2, value=year)
-    daily_activities.cell(row=1, column=2).border = name_year_month_border
-
-    daily_activities.cell(row=2, column=1, value="Month")
-    daily_activities.cell(row=2, column=1).border = name_year_month_border
-    daily_activities.cell(row=2, column=2, value=month)
-    daily_activities.cell(row=2, column=2).border = name_year_month_border
-    daily_activities.cell(row=1, column=1).font = dateFont  # Apply the font settings
-    daily_activities.cell(row=1, column=2).font = dateFont  # Apply the font settings
-    daily_activities.cell(row=2, column=1).font = dateFont  # Apply the font settings
-    daily_activities.cell(row=2, column=2).font = dateFont  # Apply the font settings
-
-    daily_activities.cell(row=1, column=7, value=user.get_full_name())
-    daily_activities.cell(row=1, column=7).font = dateFont
-    daily_activities.cell(row=1, column=7).border = name_year_month_border
-
-    daily_activities.cell(row=2, column=7, value=user.department)
-    daily_activities.cell(row=2, column=7).font = dateFont
-    daily_activities.cell(row=2, column=7).border = name_year_month_border
-
-    # Create headers for columns
-    daily_activities.cell(row=4, column=1, value="Day").font = dateFont
-    daily_activities.cell(row=4, column=1).border = name_year_month_border
-    daily_activities.cell(row=4, column=2, value="Cairo").font = dateFont
-    daily_activities.cell(row=4, column=2).border = name_year_month_border
-    daily_activities.cell(row=4, column=3, value="Japan").font = dateFont
-    daily_activities.cell(row=4, column=3).border = name_year_month_border
-    daily_activities.cell(row=4, column=4, value="Daily Activities").font = dateFont
-    daily_activities.cell(row=4, column=4).border = name_year_month_border
+    # Set the text and alignment in the first cell of the merged range
+    merged_cell = daily_activities.cell(row=2, column=2)
+    merged_cell.value = "Consulting Services for Greater Cairo Metro Line No. 4 Phase1 Project"
+    merged_cell.font = dateFont
+    merged_cell.alignment = Alignment(horizontal='center', vertical='center')
 
     script_directory = os.path.dirname(os.path.abspath(__file__))
     parent_directory = os.path.dirname(script_directory)
     parent_parent_directory = os.path.dirname(parent_directory)
     logo_path = os.path.join(parent_parent_directory, 'static', 'images', 'logo.png')
     img = Image(logo_path)
-    daily_activities.add_image(img, 'P1')
+    daily_activities.add_image(img, 'M2')
+
+    # Set font and border for "Year:" label in cell A8
+    year_label_cell = daily_activities.cell(row=8, column=1, value="Year:")
+    year_label_cell.font = Font(bold=True, size=12)
+    year_label_cell.border = name_year_month_border
+
+    # Align "Year:" label horizontally and vertically
+    year_label_cell.alignment = Alignment(horizontal='center', vertical='center')
+
+    # Set font and border for the year value in cell B8
+    year_value_cell = daily_activities.cell(row=8, column=2, value=year)
+    year_value_cell.font = Font(bold=True, size=12)
+    year_value_cell.border = name_year_month_border
+
+    # Align year value horizontally and vertically
+    year_value_cell.alignment = Alignment(horizontal='center', vertical='center')
+    year_digits = year % 100
+    month_name = calendar.month_name[month]
+
+    # Combine the month name and the last two digits of the year
+    formatted_month = f"{month_name}-{year_digits:02d}"
+
+    cell = daily_activities.cell(row=9, column=2, value=formatted_month)
+    cell.border = name_year_month_border
+    cell.font = Font(bold=True, size=12)
+    cell.alignment = Alignment(horizontal='center', vertical='center')  # Center the text horizontally and vertically
+
+    # Set the text "Month" in cell A9
+    cell_month = daily_activities.cell(row=9, column=1, value="Month")
+    cell_month.border = name_year_month_border
+    cell_month.font = Font(bold=True, size=12)
+    cell_month.alignment = Alignment(horizontal='center', vertical='center')  # Center the text horizontally and vertically
+
+    # Adjust the width of column A to fit the text
+    daily_activities.column_dimensions['A'].width = 20
+    daily_activities.column_dimensions['B'].width = 20 # Adjust the height as needed
+
+    daily_activities.merge_cells(start_row=8, start_column=7, end_row=8, end_column=11)
+    daily_activities.merge_cells(start_row=9, start_column=7, end_row=9, end_column=11)
+    daily_activities.merge_cells(start_row=12, start_column=6, end_row=12, end_column=15)
+
+    for row in range(12, 13):
+        for col in range(6, 16):
+            cell = daily_activities.cell(row=row, column=col)
+            cell.border = name_year_month_border
+    
+
+    cell = daily_activities.cell(row=8, column=7, value=user.get_full_name())
+    cell.font = Font(bold=True, size=12)
+
+    # Set alignment
+    cell.alignment = Alignment(horizontal='center', vertical='center')
+
+    # Create border
+    border = Border(left=Side(style='thin'), 
+                    right=Side(style='thin'), 
+                    top=Side(style='thin'), 
+                    bottom=Side(style='thin'))
+
+    # Apply border to each cell in the merged range
+    for row in daily_activities.iter_rows(min_row=8, max_row=8, min_col=7, max_col=11):
+        for cell in row:
+            cell.border = border
+
+    cell = daily_activities.cell(row=9, column=7, value=user.department)
+    cell.font = Font(bold=True, size=12)
+
+    # Set alignment
+    cell.alignment = Alignment(horizontal='center', vertical='center')
+
+    # Create border
+    border = Border(left=Side(style='thin'), 
+                    right=Side(style='thin'), 
+                    top=Side(style='thin'), 
+                    bottom=Side(style='thin'))
+
+    # Apply border to each cell in the merged range
+    for row in daily_activities.iter_rows(min_row=9, max_row=9, min_col=7, max_col=11):
+        for cell in row:
+            cell.border = border
+
+    # Create headers for columns
+    headers_border = Border(left=Side(style='medium'), 
+            right=Side(style='medium'), 
+            top=Side(style='medium'), 
+            bottom=Side(style='medium'))
+    for col in range(1, 4):
+        header_cell = daily_activities.cell(row=12, column=col, value=["Day", "Cairo", "Japan"][col - 1])
+        header_cell.font = dateFont
+        header_cell.border = headers_border
+        header_cell.alignment = Alignment(textRotation=90, vertical='center')
+
+    cell = daily_activities.cell(row=12, column=6, value="DAILY ACTIVITIES")
+    cell.font = dateFont
+    cell.border = name_year_month_border
+
+    # Center the text horizontally and vertically
+    cell.alignment = Alignment(horizontal='center', vertical='center')
 
     for day in range(1, calendar.monthrange(year, month)[1] + 1):
-        row_index = day + 4  # Offset by 4 to account for existing rows
-        daily_activities.cell(row=row_index, column=1, value=f"{day:02d}").font = dateFont
-        daily_activities.cell(row=row_index, column=1).alignment = Alignment(horizontal='center')
+        row_index = day + 12  # Offset by 12 to account for existing rows
+        cell = daily_activities.cell(row=row_index, column=1, value=f"{day:02d}")
+        cell.font = Font(size=10)
+        cell.alignment = Alignment(horizontal='center', vertical='center')
         
         activities_for_day = activities.filter(activityDate__day=day)
         
@@ -354,24 +432,37 @@ def __add_daily_activities_sheet__(wb, current_date, user):
         activities_text = "\n".join([activity.userActivity or '' for activity in activities_for_day])
         
         # Merge cells for the "Activities" column
-        start_column_letter = get_column_letter(4)  # Column D
-        end_column_letter = get_column_letter(11)  # Adjust the last column letter as needed
+        start_column_letter = get_column_letter(6)  # Column D
+        end_column_letter = get_column_letter(15)  # Adjust the last column letter as needed
         activities_column_range = f"{start_column_letter}{row_index}:{end_column_letter}{row_index}"
         daily_activities.merge_cells(activities_column_range)
         
-        # Set the width of the columns
-        for col_idx in range(4, 12):  # Adjust the range as needed
-            daily_activities.column_dimensions[get_column_letter(col_idx)].width = 15  # Adjust the width as needed
+        # Set value and font for the cell in column 6
+        activities_cell = daily_activities.cell(row=row_index, column=6, value=activities_text)
+        activities_cell.font = Font(size=10)
         
-        daily_activities.cell(row=row_index, column=4, value=activities_text)
+        # Adjust row height to fit the content of the cell in column 6
+        activities_cell.alignment = Alignment(wrap_text=True)
         
+        # Calculate the required row height based on the number of lines in the text
+        num_lines = activities_text.count('\n') + 1  # Count the number of lines in the text
+        font_size = 10  # Assuming font size is 10
+        line_height = 1.2 * font_size  # Approximate line height
+        required_height = line_height * num_lines
+        
+        # Adjust the row height to fit the content
+        row_dimension = daily_activities.row_dimensions[row_index]
+        row_dimension.height = required_height
+
         activities_type = "\n".join([str(activity.get_activity_type()) for activity in activities_for_day])
-        
-        start_column_letter = get_column_letter(2)  # Column B
+
+        start_column_letter = get_column_letter(2) 
         end_column_letter = get_column_letter(2)
-        
+
         if user.expert in [constants.LOCAL_USER, constants.EXPERT_USER]:
-            daily_activities.cell(row=row_index, column=3 if activities_type == "J" else 2, value=activities_type)
+            cell = daily_activities.cell(row=row_index, column=3 if activities_type == "J" else 2, value=activities_type)
+            cell.alignment = Alignment(horizontal='center', vertical='center')
+            cell.font = Font(size=11)
 
 def __add_cover_sheet__(wb, current_month_name, current_year, user, current_date, current_month):
     # Create cover page
