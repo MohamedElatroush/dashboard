@@ -721,10 +721,16 @@ def create_activity_excel_report(users, activities, selected_date, companyName, 
     ws = wb.active
     ws.title = "TS"
 
-    # Write the month and year headers at the top
-    ws.cell(row=1, column=1, value=current_month_name + " " + str(current_year))
-    ws.cell(row=1, column=1).font = dateFont  # Apply the font settings
-    ws.cell(row=1, column=1).fill = yellow_fill
+    ws.cell(row=1, column=1, value="Cairo Line 4 Phase 1 - TimeSheet")
+    # Set the font to bold
+    bold_font = Font(bold=True)
+    ws.cell(row=1, column=1).font = bold_font
+    # Combine the month abbreviation and year in the desired format
+    formatted_date = f"{current_month_name.lower()[:3]}-{current_year}"
+    ws.cell(row=1, column=5, value=formatted_date)
+    yearFont = Font(size=8)
+    ws.cell(row=1, column=5).font = yearFont
+    ws.cell(row=1, column=5).fill = yellow_fill
 
     # Create a mapping dictionary for user types
     for col_num, column_title in enumerate(constants.EXPORT_ACTIVITY_COLUMNS, 1):
@@ -805,15 +811,17 @@ def create_activity_excel_report(users, activities, selected_date, companyName, 
             end_date = current_date.replace(day=last_day_of_month)
             last_day_of_month = calendar.monthrange(current_date.year, current_date.month)[1]
             end_date = current_date.replace(day=last_day_of_month) + timedelta(days=1)
+            start_date = np.datetime64(start_date, 'D')
+            end_date = np.datetime64(end_date, 'D')
             total_working_days_cairo = np.busday_count(start_date, end_date, weekmask='1111111')
             total_working_days_japan = np.busday_count(start_date, end_date, weekmask='0011111')
-            
+
         for col, activity_type in user_data['activities'].items():
             if (activity_type == 'J'):
                 japan_count += 1
             if activity_type in ['C', 'H']:
                 cairo_count += 1
-            
+
             ws.cell(row=row_num, column=col + 11, value=str(activity_type)).font = font
             if "C" in activity_type:
                 green_fill = PatternFill(start_color="A8D08D", end_color="A8D08D", fill_type="solid")
@@ -874,6 +882,14 @@ def create_activity_excel_report(users, activities, selected_date, companyName, 
             sheet = wb.create_sheet(title=str(dep_nat))  # Create a new sheet for each Dep NAT
             sheet.sheet_properties.tabColor = "FFA500"
             __customize_sheet__(sheet, dep_nat, selected_date)
+            # Write "Dep Nat" values under the appropriate column
+    for user_id, user_data in user_rows.items():
+        if user_data['nat_group'] == dep_nat:
+            row_num = user_data['user_counter'] + 2
+            dep_nat_cell = sheet.cell(row=row_num, column=constants.EXPORT_ACTIVITY_COLUMNS.index("Dep NAT") + 1)
+            dep_nat_cell.value = str(dep_nat)
+            dep_nat_cell.font = Font(size=8)
+            dep_nat_cell.alignment = Alignment(horizontal="center")
 
     excel_data = BytesIO()
     wb.save(excel_data)
