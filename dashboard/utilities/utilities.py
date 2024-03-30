@@ -132,8 +132,8 @@ def __add_local_working_days__(current_date, user, cover_ws):
     end_date = end_date + timedelta(days=1)
 
     total_working_days_expert = np.busday_count(start_date, end_date, weekmask='0011111')
-    cover_ws['F38'].value = total_working_days_expert
-    cover_ws['F38'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
+    cover_ws['F42'].value = total_working_days_expert
+    cover_ws['F42'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
     ##### EXPERT #####
 
     start_date = current_date.date().replace(day=1)
@@ -178,10 +178,10 @@ def __add_local_working_days__(current_date, user, cover_ws):
                         working_days -= 1
 
         # Add "0" under "Cairo" for local users
-        cover_ws['D38'].value = working_days
-        cover_ws['D38'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
-        cover_ws['G38'].value = total_working_days
-        cover_ws['G38'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
+        cover_ws['D42'].value = working_days
+        cover_ws['D42'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
+        cover_ws['G42'].value = total_working_days
+        cover_ws['G42'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
 
         start_date = current_date.date().replace(day=1)
         end_date = current_date.date().replace(day=calendar.monthrange(current_date.date().year, current_date.date().month)[1])
@@ -193,17 +193,19 @@ def __add_local_working_days__(current_date, user, cover_ws):
             activityDate__year=current_date.date().year,
         ).filter(activityType__in=[constants.HOMEASSIGN]).count()
 
-        cover_ws['C38'].value = activities_japan
-        cover_ws['C38'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
+        cover_ws['C42'].value = activities_japan
+        cover_ws['C42'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
 
-        cover_ws['J38'].value = round(cover_ws['D38'].value / cover_ws['G38'].value, 3)
-        cover_ws['J38'].font = Font(size=11)
-        cover_ws['J38'].alignment = Alignment(horizontal='center', vertical='center')
+        cover_ws['C42'].value = activities_japan
+        cover_ws['C42'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
+        cover_ws['J42'].value = round(cover_ws['D42'].value / cover_ws['G42'].value, 3)
+        cover_ws['J42'].font = Font(size=11)
+        cover_ws['J42'].alignment = Alignment(horizontal='center', vertical='center')
 
          # Japan NOD/TCD
-        cover_ws['I38'].value = round(cover_ws['C38'].value / cover_ws['F38'].value, 3)
-        cover_ws['I38'].font = Font(size=11)
-        cover_ws['I38'].alignment = Alignment(horizontal='center', vertical='center')
+        cover_ws['I42'].value = round(cover_ws['C42'].value / cover_ws['F42'].value, 3)
+        cover_ws['I42'].font = Font(size=11)
+        cover_ws['I42'].alignment = Alignment(horizontal='center', vertical='center')
 
 def __add_expert_working_days__(current_date, user, cover_ws):
         ###### LOCAL ######
@@ -233,11 +235,11 @@ def __add_expert_working_days__(current_date, user, cover_ws):
         # Count the number of activities
         working_days = activities.count()
 
-        cover_ws['C38'].value = working_days
-        cover_ws['C38'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
+        cover_ws['C42'].value = working_days
+        cover_ws['C42'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
 
-        cover_ws['F38'].value = total_working_days
-        cover_ws['F38'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
+        cover_ws['F42'].value = total_working_days
+        cover_ws['F42'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
 
         start_date = current_date.date().replace(day=1)
         end_date = current_date.date().replace(day=calendar.monthrange(current_date.date().year, current_date.date().month)[1])
@@ -251,22 +253,22 @@ def __add_expert_working_days__(current_date, user, cover_ws):
         ).count()
 
         # Cairo NOD
-        cover_ws['D38'].value = activities_cairo_count
+        cover_ws['D42'].value = activities_cairo_count
         cover_ws['D38'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
 
         # Cairo TCD
-        cover_ws['G38'].value = total_working_days_cairo
-        cover_ws['G38'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
+        cover_ws['G42'].value = total_working_days_cairo
+        cover_ws['G42'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
 
         # Japan NOD/TCD
-        cover_ws['I38'].value = round(cover_ws['C38'].value / cover_ws['F38'].value, 3)
-        cover_ws['I38'].font = Font(size=11)
-        cover_ws['I38'].alignment = Alignment(horizontal='center', vertical='center')
+        cover_ws['I42'].value = round(cover_ws['C42'].value / cover_ws['F42'].value, 3)
+        cover_ws['I42'].font = Font(size=11)
+        cover_ws['I42'].alignment = Alignment(horizontal='center', vertical='center')
 
         # Cairo NOD/TCD
-        cover_ws['J38'].value = round(cover_ws['D38'].value / cover_ws['G38'].value, 3)
-        cover_ws['J38'].font = Font(size=11)
-        cover_ws['J38'].alignment = Alignment(horizontal='center', vertical='center')
+        cover_ws['J42'].value = round(cover_ws['D42'].value / cover_ws['G42'].value, 3)
+        cover_ws['J42'].font = Font(size=11)
+        cover_ws['J42'].alignment = Alignment(horizontal='center', vertical='center')
 
 def set_borders(ws, row, columns):
     for col in columns:
@@ -366,7 +368,6 @@ def __add_daily_activities_sheet__(wb, current_date, user):
         for col in range(6, 16):
             cell = daily_activities.cell(row=row, column=col)
             cell.border = name_year_month_border
-    
 
     cell = daily_activities.cell(row=8, column=7, value=user.get_full_name())
     cell.font = Font(bold=True, size=12)
@@ -375,9 +376,9 @@ def __add_daily_activities_sheet__(wb, current_date, user):
     cell.alignment = Alignment(horizontal='center', vertical='center')
 
     # Create border
-    border = Border(left=Side(style='thin'), 
-                    right=Side(style='thin'), 
-                    top=Side(style='thin'), 
+    border = Border(left=Side(style='thin'),
+                    right=Side(style='thin'),
+                    top=Side(style='thin'),
                     bottom=Side(style='thin'))
 
     # Apply border to each cell in the merged range
@@ -407,6 +408,7 @@ def __add_daily_activities_sheet__(wb, current_date, user):
             right=Side(style='medium'), 
             top=Side(style='medium'), 
             bottom=Side(style='medium'))
+    
     for col in range(1, 4):
         header_cell = daily_activities.cell(row=12, column=col, value=["Day", "Cairo", "Japan"][col - 1])
         header_cell.font = dateFont
@@ -436,20 +438,20 @@ def __add_daily_activities_sheet__(wb, current_date, user):
         end_column_letter = get_column_letter(15)  # Adjust the last column letter as needed
         activities_column_range = f"{start_column_letter}{row_index}:{end_column_letter}{row_index}"
         daily_activities.merge_cells(activities_column_range)
-        
+
         # Set value and font for the cell in column 6
         activities_cell = daily_activities.cell(row=row_index, column=6, value=activities_text)
         activities_cell.font = Font(size=10)
-        
+
         # Adjust row height to fit the content of the cell in column 6
         activities_cell.alignment = Alignment(wrap_text=True)
-        
+
         # Calculate the required row height based on the number of lines in the text
         num_lines = activities_text.count('\n') + 1  # Count the number of lines in the text
         font_size = 10  # Assuming font size is 10
         line_height = 1.2 * font_size  # Approximate line height
         required_height = line_height * num_lines
-        
+
         # Adjust the row height to fit the content
         row_dimension = daily_activities.row_dimensions[row_index]
         row_dimension.height = required_height
@@ -473,29 +475,9 @@ def __add_cover_sheet__(wb, current_month_name, current_year, user, current_date
     cover_ws = wb.create_sheet(title=str(user.first_name))
 
     # Merge and set the title
-    cover_ws.merge_cells('A3:G3')
-    title_cell = cover_ws['A3']
-    title_cell.value = constants.COVER_TS_TEXT
-    title_cell.font = Font(size=11)
-    title_cell.alignment = Alignment(horizontal='center', vertical='center')
-
-    # Merge and set the Monthly Time Sheet text
-    cover_ws.merge_cells('A6:G6')
-    monthly_ts_cell = cover_ws['A6']
-    monthly_ts_cell.value = 'Monthly Time Sheet'
-    monthly_ts_cell.font = Font(size=16, italic=True)
-    monthly_ts_cell.alignment = Alignment(horizontal='center', vertical='center')
-
-    # Set the month and year
-    cover_ws['A7'].value = 'Month:'
-    cover_ws.merge_cells('B7:C7')
-    cover_ws['B7'].value = current_month_name
-    for cell in ['B7', 'G7']:
-        cover_ws[cell].font = Font(size=12, italic=True, bold=True)
-        cover_ws[cell].alignment = Alignment(horizontal='center', vertical='center')
-
-    cover_ws['F7'].value = 'Year:'
-    cover_ws['G7'].value = current_year
+    border_style = Border(
+        bottom=Side(border_style='thin')
+    )
 
     # add the logo
     script_directory = os.path.dirname(os.path.abspath(__file__))
@@ -503,70 +485,105 @@ def __add_cover_sheet__(wb, current_month_name, current_year, user, current_date
     parent_parent_directory = os.path.dirname(parent_directory)
     logo_path = os.path.join(parent_parent_directory, 'static', 'images', 'logo.png')
     img = Image(logo_path)
-    cover_ws.add_image(img, 'I2')
+    cover_ws.add_image(img, 'O2')
 
-    # add the name
-    cover_ws.merge_cells('B9:C9')
-    cover_ws['A9'].value = 'Name:'
-    cover_ws['B9'].value = str(user.get_full_name())
+
+    title_cell = cover_ws['A1']
+    cover_ws.merge_cells(start_row=1, start_column=1, end_row=6, end_column=13)
+    title_cell.value = constants.COVER_TS_TEXT
+    title_cell.font = Font(size=12)
+    title_cell.alignment = Alignment(horizontal='center', vertical='center')
+
+    # Merge and set the Monthly Time Sheet text
+    cover_ws.merge_cells(start_row=8, start_column=1, end_row=8, end_column=13)  # Modified here
+    monthly_ts_cell = cover_ws['A8']  # Modified here
+    monthly_ts_cell.value = 'Monthly Time Sheet'
+    monthly_ts_cell.font = Font(size=16, italic=True, bold=True)
+    monthly_ts_cell.alignment = Alignment(horizontal='center', vertical='center')
+
+    # Set the month and year
+    year_label_cell = cover_ws.cell(row=10, column=1, value="Month:")
+    year_label_cell.font = Font(bold=True, size=12)
+
+    year_label_cell = cover_ws.cell(row=10, column=11, value="Year:")
+    year_label_cell.font = Font(bold=True, size=12)
+
+    year_label_cell = cover_ws.cell(row=10, column=13, value=current_year)
+    year_label_cell.font = Font(bold=True, size=12)
+    year_label_cell.border = border_style
+
+    value_year_cell = cover_ws.cell(row=10, column=3, value=current_month_name)
+    value_year_cell.font = Font(bold=True, size=12)
+    value_year_cell.border = border_style
+
+    name_label_cell = cover_ws.cell(row=12, column=1, value="Name:")
+    name_label_cell.font = Font(bold=True, size=12)
+
+    name_label_cell = cover_ws.cell(row=12, column=3, value=str(user.get_full_name()))
+    name_label_cell.font = Font(bold=True, size=12)
+    name_label_cell.border = border_style
 
     user_grade = user.get_grade()
+    name_label_cell = cover_ws.cell(row=14, column=1, value="Category:")
+    name_label_cell.font = Font(bold=True, size=12)
 
-    cover_ws['A11'].value = 'Category:'
-    cover_ws['D11'].value = 'A1'
-    cover_ws['F11'].value = 'A2'
-    cover_ws['H11'].value = 'A3'
-    cover_ws['D13'].value = 'B1'
-    cover_ws['F13'].value = 'B2'
-    cover_ws['H13'].value = 'B3'
-    cover_ws['D15'].value = 'B4'
-    cover_ws['F15'].value = 'B5'
+    cover_ws.cell(row=14, column=4, value="A1")
+    cover_ws.cell(row=14, column=7, value="A2")
+    cover_ws.cell(row=14, column=10, value="A3")
+
+    cover_ws.cell(row=16, column=4, value="B1")
+    cover_ws.cell(row=16, column=7, value="B2")
+    cover_ws.cell(row=16, column=10, value="B3")
+
+    cover_ws.cell(row=18, column=4, value="B4")
+    cover_ws.cell(row=18, column=7, value="B5")
+
+    # Define the rows and columns
+    rows = [14, 16, 18]
+    columns = [4, 7, 10]
+
+    # Iterate over each cell and set the value and alignment
+    for row in rows:
+        for col in columns:
+            cell = cover_ws.cell(row=row, column=col)
+            cell.alignment = Alignment(horizontal='center', vertical='center')
+
 
     # Mapping of grades to corresponding columns
     grade_mapping = {
         'A1': 'C',
-        'A2': 'E',
-        'A3': 'G',
+        'A2': 'F',
+        'A3': 'I',
         'B1': 'C',
-        'B2': 'E',
-        'B3': 'G',
+        'B2': 'F',
+        'B3': 'I',
         'B4': 'C',
-        'B5': 'E',
+        'B5': 'F',
     }
 
-    # Set the letter '/' in the corresponding cell based on the user's grade
+    # # Set the letter '/' in the corresponding cell based on the user's grade
     if user_grade in grade_mapping:
         grade_column = grade_mapping[user_grade]
-        cell_address = f'{grade_column}11'
+        cell_address = f'{grade_column}14'
         cover_ws[cell_address].value = '/'
         cover_ws[cell_address].alignment = Alignment(horizontal='center', vertical='center')
 
     # Set borders for various cells
-    set_borders(cover_ws, 11, ['C', 'E', 'G'])
-    set_borders(cover_ws, 13, ['C', 'E', 'G'])
-    set_borders(cover_ws, 15, ['C', 'E'])
+    set_borders(cover_ws, 14, ['C', 'F', 'I'])
+    set_borders(cover_ws, 16, ['C', 'F', 'I'])
+    set_borders(cover_ws, 18, ['C', 'F'])
 
-    for col in ['C', 'E', 'G']:
-        cell_address = f'{col}11'
-        cover_ws[cell_address].border = Border(top=Side(style='thin', color='000000'), left=Side(style='thin', color='000000'),
-                                            right=Side(style='thin', color='000000'), bottom=Side(style='thin', color='000000'))
-    for col in ['C', 'E', 'G']:
-        cell_address = f'{col}13'
-        cover_ws[cell_address].border = Border(top=Side(style='thin', color='000000'), left=Side(style='thin', color='000000'),
-                                            right=Side(style='thin', color='000000'), bottom=Side(style='thin', color='000000'))
-    for col in ['C', 'E']:
-        cell_address = f'{col}15'
-        cover_ws[cell_address].border = Border(top=Side(style='thin', color='000000'), left=Side(style='thin', color='000000'),
-                                            right=Side(style='thin', color='000000'), bottom=Side(style='thin', color='000000'))
 
-    cover_ws['A18'].value = 'Nationality:'
-    cover_ws['A18'].font = Font(size=11, italic=True, bold=True)
+    cell = cover_ws.cell(row=21, column=1, value="Nationality:")
+    cell.font = Font(bold=True, size=12)
 
-    cover_ws['D18'].value = 'Expatriate'
-    cover_ws['D18'].font = Font(size=10, bold=True)
+    cell = cover_ws.cell(row=21, column=4, value="Expatriate")
+    cell.font = Font(name='Times New Roman', size=11)
+    cell.alignment = Alignment(horizontal='center', vertical='center')
 
-    cover_ws['F18'].value = 'Local'
-    cover_ws['F18'].font = Font(size=10, bold=True)
+    cell = cover_ws.cell(row=21, column=7, value="Local")
+    cell.font = Font(name='Times New Roman', size=11)
+    cell.alignment = Alignment(horizontal='center', vertical='center')
 
     # Get the user's nationality
     user_nationality = user.get_expert()
@@ -574,109 +591,117 @@ def __add_cover_sheet__(wb, current_month_name, current_year, user, current_date
     # Mapping of nationalities to corresponding columns
     nationality_mapping = {
         'EXP': 'C',  # Column for Expatriate
-        'LOC': 'E',  # Column for Local
+        'LOC': 'F',  # Column for Local
     }
 
     # Set the letter '/' in the corresponding cell and center it
     if user_nationality in nationality_mapping:
         nationality_column = nationality_mapping[user_nationality]
-        cell_address = f'{nationality_column}18'
+        cell_address = f'{nationality_column}21'
         cover_ws[cell_address].value = '/'
         cover_ws[cell_address].alignment = Alignment(horizontal='center', vertical='center')
 
-        # Apply border
-        cover_ws[cell_address].border = Border(top=Side(style='thin', color='000000'),
-                                            left=Side(style='thin', color='000000'),
-                                            right=Side(style='thin', color='000000'),
-                                            bottom=Side(style='thin', color='000000'))
+    set_borders(cover_ws, 21, ['C', 'F'])
 
-    for col in ['C', 'E']:
-        cell_address = f'{col}18'
-        cover_ws[cell_address].border = Border(top=Side(style='thin', color='000000'), left=Side(style='thin', color='000000'),
-                                            right=Side(style='thin', color='000000'), bottom=Side(style='thin', color='000000'))
+    cell = cover_ws.cell(row=24, column=1, value="Group Field:")
+    cell.font = Font(bold=True, size=12)
 
+    cover_ws.merge_cells(start_row=24, start_column=4, end_row=24, end_column=6)
+    cover_ws.merge_cells(start_row=24, start_column=8, end_row=24, end_column=10)
+    cover_ws.merge_cells(start_row=26, start_column=4, end_row=26, end_column=6)
+    cover_ws.merge_cells(start_row=26, start_column=8, end_row=26, end_column=10)
 
-    cover_ws['A21'].value = 'Group Field:'
-    cover_ws['A21'].font = Font(size=11, italic=True, bold=True)
+    cell = cover_ws.cell(row=24, column=4, value="Management and SHQE")
+    cell.font = Font(size=11)
+    cell.alignment = Alignment(horizontal='center', vertical='center')
 
-    cover_ws.merge_cells('D21:E21')
-    cover_ws.merge_cells('H21:I21')
+    cell = cover_ws.cell(row=24, column=8, value="Tender Evaluation and Contract Negotiation")
+    cell.font = Font(size=11)
+    cell.alignment = Alignment(horizontal='center', vertical='center')
 
-    cover_ws['D21'].value = 'Management and SHQE'
-    cover_ws['D21'].font = Font(size=10)
+    cell = cover_ws.cell(row=26, column=4, value="Construction Supervision")
+    cell.font = Font(size=11)
+    cell.alignment = Alignment(horizontal='center', vertical='center')
 
-    cover_ws['H21'].value = 'Tender Evaluation and Contract Negotiation'
-    cover_ws['H21'].font = Font(size=10)
+    cell = cover_ws.cell(row=26, column=8, value="O&M")
+    cell.font = Font(size=11)
+    cell.alignment = Alignment(horizontal='center', vertical='center')
 
-    cover_ws.merge_cells('D23:E23')
-    cover_ws.merge_cells('H23:I23')
+    set_borders(cover_ws, 24, ['C', 'G'])
+    set_borders(cover_ws, 26, ['C', 'G'])
 
-    cover_ws['D23'].value = 'Construction Supervision'
-    cover_ws['D23'].font = Font(size=10)
-
-    cover_ws['H23'].value = 'O&M'
-    cover_ws['H23'].font = Font(size=10)
-
-    for col in ['C', 'G']:
-        cell_address = f'{col}21'
-        cover_ws[cell_address].border = Border(top=Side(style='thin', color='000000'), left=Side(style='thin', color='000000'),
-                                            right=Side(style='thin', color='000000'), bottom=Side(style='thin', color='000000'))
-    for col in ['C', 'G']:
-        cell_address = f'{col}23'
-        cover_ws[cell_address].border = Border(top=Side(style='thin', color='000000'), left=Side(style='thin', color='000000'),
-                                            right=Side(style='thin', color='000000'), bottom=Side(style='thin', color='000000'))
-
+    grey_fill = PatternFill(start_color='DDDDDD', end_color='DDDDDD', fill_type='solid')
     first_day_of_month = datetime(current_year, current_month, 1)
     for i in range(1, 17):
-        col_address = chr(ord('C') + (i - 1))  # Alternating columns C and G
-        cell_address = f'{col_address}27'
-        day_of_week = (first_day_of_month + timedelta(days=i - 1)).strftime("%a")  # Get the abbreviated day name
-        cover_ws[cell_address].value = day_of_week
-
-        col_address = chr(ord('C') + (i - 1))
-        cell_address = f'{col_address}28'
-        cover_ws[str(cell_address)].value = str((first_day_of_month + timedelta(days=i - 1)).day)
-
-        col_address = chr(ord('C') + (i - 1))
-        cell_address_activity_type = f'{col_address}29'
+        col_address = chr(ord('A') + (i - 1))  # Alternating columns C and G
+        # Set the day of the week
+        day_of_week_cell = cover_ws[col_address + '31']
+        day_of_week_cell.value = (first_day_of_month + timedelta(days=i - 1)).strftime("%a")
+        day_of_week_cell.alignment = Alignment(horizontal='center', vertical='center')
+        day_of_week_cell.fill = grey_fill
+        set_borders(cover_ws, 31, [col_address])
+        
+        # Set the day of the month
+        day_of_month_cell = cover_ws[col_address + '32']
+        day_of_month_cell.value = str((first_day_of_month + timedelta(days=i - 1)).day)
+        day_of_month_cell.alignment = Alignment(horizontal='center', vertical='center')
+        day_of_month_cell.fill = grey_fill
+        set_borders(cover_ws, 32, [col_address])
+        cell_address_activity_type = f'{col_address}33'
 
         # Replace 'activity_date' with the actual date for which you want to retrieve the activityType
         activity_date = first_day_of_month + timedelta(days=i - 1)
         activity_instance = Activity.objects.filter(user=user, activityDate=activity_date).first()
 
         if activity_instance:
-            cover_ws[cell_address_activity_type].value = str(activity_instance.get_activity_type())
+            activity_type = activity_instance.get_activity_type()
+            cover_ws[cell_address_activity_type].value = str(activity_type)
+            if activity_type == constants.ACTIVITY_TYPES_CHOICES[constants.HOLIDAY][1]:
+                cover_ws[cell_address_activity_type].fill = grey_fill
         else:
             cover_ws[cell_address_activity_type].value = None
+        cover_ws[cell_address_activity_type].alignment = Alignment(horizontal='center', vertical='center')
 
     first_day_of_second_half = datetime(current_year, current_month, 17).date()
 
     # Write abbreviated weekdays in row 30 for the second half of the month
     for i in range(0, calendar.monthrange(current_year, current_month)[1] - 16):
-        col_address = chr(ord('C') + i) + '30'
+        col_address = chr(ord('A') + i) + '34'
         day_of_week = (first_day_of_second_half + timedelta(days=i)).strftime("%a")  # Get the abbreviated day name
-        cover_ws[col_address].value = day_of_week
-
+        cell = cover_ws[col_address]
+        cell.value = day_of_week
+        cell.alignment = Alignment(horizontal='center', vertical='center')
+        cell.fill = grey_fill
+        set_borders(cover_ws, 34, [col_address])
 
     # Continue writing the numeric values for the remaining days in the row below (row 30)
     for i in range(17, calendar.monthrange(current_year, current_month)[1] + 1):
-        col_address = chr(ord('C') + (i - 17))
-        cell_address = f'{col_address}31'
-        cover_ws[cell_address].value = (first_day_of_month + timedelta(days=i - 1)).day
+        col_address = chr(ord('A') + (i - 17))
+        cell_address = f'{col_address}35'
+        cell = cover_ws[cell_address]
+        cell.value = (first_day_of_month + timedelta(days=i - 1)).day
+        cell.alignment = Alignment(horizontal='center', vertical='center')
+        cell.fill = grey_fill
+        set_borders(cover_ws, 35, [col_address])
 
-    # Add the corresponding user activities in row 32
+
     for i in range(17, calendar.monthrange(current_year, current_month)[1] + 1):
-        col_address_activity_type = chr(ord('C') + (i - 17)) + '32'
+        col_address_activity_type = chr(ord('A') + (i - 17)) + '36'
 
         activity_date = datetime(current_year, current_month, 17) + timedelta(days=i - 17)
         activity_instance = Activity.objects.filter(user=user, activityDate=activity_date).first()
 
+        cell = cover_ws[col_address_activity_type]
         if activity_instance:
-            cover_ws[col_address_activity_type].value = str(activity_instance.get_activity_type())
+            activity_type = activity_instance.get_activity_type()
+            cell.value = str(activity_type)
+            if activity_type == constants.ACTIVITY_TYPES_CHOICES[constants.HOLIDAY][1]:
+                cell.fill = grey_fill
         else:
-            cover_ws[col_address_activity_type].value = None
+            cell.value = None
+        cell.alignment = Alignment(horizontal='center', vertical='center')
 
-    for row in range(36, 38):
+    for row in range(40, 43):
         for col_letter in ['C', 'D', 'F', 'G', 'I', 'J']:
             cell = cover_ws[col_letter + str(row)]
             cell.border = Border(
@@ -686,18 +711,16 @@ def __add_cover_sheet__(wb, current_month_name, current_year, user, current_date
                 bottom=Side(style='thin', color='000000')
             )
     # add summary for working days
-    cover_ws.merge_cells('C36:D36')
-    cover_ws['C36'].value = "No. of Days (NOD)*"
-    cover_ws['C36'].font = Font(size=11, bold=True)
-    cover_ws['C36'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
-    cover_ws['C36'].fill = PatternFill(start_color='C0C0C0', end_color='C0C0C0', fill_type='solid')
+    cover_ws.merge_cells('C40:D40')
+    cover_ws['C40'].value = "No. of Days (NOD)*"
+    cover_ws['C40'].font = Font(size=11, bold=True)
+    cover_ws['C40'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
+    cover_ws['C40'].fill = grey_fill
 
     start_date = current_date.date().replace(day=1)
     last_day_of_month = calendar.monthrange(current_date.date().year, current_date.date().month)[1]
     end_date = current_date.date().replace(day=last_day_of_month)
     total_working_days = np.busday_count(start_date, end_date, weekmask='0011111')
-    cover_ws['F38'].value = total_working_days
-    cover_ws['F38'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
 
     # Assuming user is an instance of the User model
     if user.expert == constants.LOCAL_USER:
@@ -706,19 +729,19 @@ def __add_cover_sheet__(wb, current_month_name, current_year, user, current_date
         __add_expert_working_days__(current_date, user, cover_ws)
 
     # Merge cells and set values for total calendar days (TCD)
-    cover_ws.merge_cells('F36:G36')
-    tcd_cell = cover_ws['F36']
+    cover_ws.merge_cells('F40:G40')
+    tcd_cell = cover_ws['F40']
     tcd_cell.value = "Total Calendar Days (TCD)"
     tcd_cell.font = Font(size=10, bold=True)
     tcd_cell.alignment = Alignment(horizontal='center', vertical='center')
-    tcd_cell.fill = PatternFill(start_color='C0C0C0', end_color='C0C0C0', fill_type='solid')
+    tcd_cell.fill = grey_fill
 
     # Set values for Japan and Cairo columns
     labels = {
-        'C37': 'Japan',
-        'D37': 'Cairo',
-        'F37': 'Japan',
-        'G37': 'Cairo'
+        'C41': 'Japan',
+        'D41': 'Cairo',
+        'F41': 'Japan',
+        'G41': 'Cairo'
     }
     for cell_address, label_text in labels.items():
         cell = cover_ws[cell_address]
@@ -727,17 +750,17 @@ def __add_cover_sheet__(wb, current_month_name, current_year, user, current_date
         cell.alignment = Alignment(horizontal='center', vertical='center')
 
     # Merge cells and set values for consumption NOD/TCD
-    cover_ws.merge_cells('I36:J36')
-    consumption_cell = cover_ws['I36']
+    cover_ws.merge_cells('I40:J40')
+    consumption_cell = cover_ws['I40']
     consumption_cell.value = "Consumption NOD/TCD"
     consumption_cell.font = Font(size=11, bold=True)
     consumption_cell.alignment = Alignment(horizontal='center', vertical='center')
-    consumption_cell.fill = PatternFill(start_color='C0C0C0', end_color='C0C0C0', fill_type='solid')
+    consumption_cell.fill = grey_fill
 
     # Set values for Japan and Cairo columns in consumption NOD/TCD section
     labels = {
-        'I37': 'Japan',
-        'J37': 'Cairo'
+        'I41': 'Japan',
+        'J41': 'Cairo'
     }
     for cell_address, label_text in labels.items():
         cell = cover_ws[cell_address]
@@ -747,22 +770,22 @@ def __add_cover_sheet__(wb, current_month_name, current_year, user, current_date
 
 
     # Project Director cell (B42)
-    __format_cell__(cover_ws['B42'], "Project Director")
+    __format_cell__(cover_ws['B45'], "Project Director")
 
     # NAT Approval cell (L42)
-    __format_cell__(cover_ws['L42'], "NAT Approval")
+    __format_cell__(cover_ws['L45'], "NAT Approval")
 
     for col_letter in range(ord('A'), ord('S')):
         col_letter = chr(col_letter)
-        cell = cover_ws[col_letter + '45']
+        cell = cover_ws[col_letter + '47']
         cell.border = Border(bottom=Side(style='thick'))
 
     labels = {
-        'B47': "J = Working day In Japan",
-        'M47': "C = Working day In Cairo",
-        'B49': "H = Official Holiday In Cairo",
-        'M49': "X = Day off",
-        'B51': "Note: According to the contract 81/M the total days are working days in Cairo plus to official holiday in Egypt *NOD=C (Working day in Cairo)+H (Official Holiday in Egypt)"
+        'B50': "J = Working day In Japan",
+        'M50': "C = Working day In Cairo",
+        'B52': "H = Official Holiday In Cairo",
+        'M52': "X = Day off",
+        'B55': "Note: According to the contract 81/M the total days are working days in Cairo plus to official holiday in Egypt *NOD=C (Working day in Cairo)+H (Official Holiday in Egypt)"
     }
 
     for cell_address, label_text in labels.items():
@@ -780,7 +803,6 @@ def create_activity_excel_report(users, activities, selected_date, companyName, 
     current_year = current_date.year
 
     font = Font(size=8)
-    dateFont = Font(size=16)
 
     # Create a Border object for cell borders
     thin_border = Border(top=Side(style='thin'),
