@@ -68,7 +68,6 @@ class User(AbstractUser, TimeStampedModel):
 
 
     def save(self, *args, **kwargs):
-        # if not self.pk: # New user
         if self.grade is None:
             self.hrCode = None
             self.expert = None
@@ -80,7 +79,6 @@ class User(AbstractUser, TimeStampedModel):
             self.generate_hr_code()
             hrHistory.objects.create(hrCode=self.hrCode)
         super().save(*args, **kwargs)
-        # Add hrCode to hrHistory model
 
     def __str__(self):
         return f'username: {self.username}'
@@ -174,3 +172,6 @@ class Activity(TimeStampedModel):
 
 class hrHistory(TimeStampedModel):
     hrCode = models.CharField(max_length=256, unique=True)
+    def __str__(self):
+        if self.hrCode:
+            return f'{self.hrCode}'

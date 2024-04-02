@@ -290,7 +290,7 @@ def __add_daily_activities_sheet__(wb, current_date, user):
     year = current_date.year
 
     # get all the activities for that month by that user
-    activities = Activity.objects.filter(created__month=month, created__year=year, user__id=user.id).order_by('-created')
+    activities = Activity.objects.filter(activityDate__month=month, activityDate__year=year, user__id=user.id).order_by('-created')
     user = User.objects.get(id=user.id)
 
     daily_activities = wb.create_sheet(title=f"{user.first_name} (DA)")
@@ -357,8 +357,8 @@ def __add_daily_activities_sheet__(wb, current_date, user):
     cell_month.alignment = Alignment(horizontal='center', vertical='center')  # Center the text horizontally and vertically
 
     # Adjust the width of column A to fit the text
-    daily_activities.column_dimensions['A'].width = 20
-    daily_activities.column_dimensions['B'].width = 20 # Adjust the height as needed
+    daily_activities.column_dimensions['A'].width = 10
+    daily_activities.column_dimensions['B'].width = 10 # Adjust the height as needed
 
     daily_activities.merge_cells(start_row=8, start_column=7, end_row=8, end_column=11)
     daily_activities.merge_cells(start_row=9, start_column=7, end_row=9, end_column=11)
@@ -386,7 +386,7 @@ def __add_daily_activities_sheet__(wb, current_date, user):
         for cell in row:
             cell.border = border
 
-    cell = daily_activities.cell(row=9, column=7, value=user.department)
+    cell = daily_activities.cell(row=9, column=7, value=user.position)
     cell.font = Font(bold=True, size=12)
 
     # Set alignment
@@ -421,48 +421,73 @@ def __add_daily_activities_sheet__(wb, current_date, user):
 
     # Center the text horizontally and vertically
     cell.alignment = Alignment(horizontal='center', vertical='center')
-
+    
     for day in range(1, calendar.monthrange(year, month)[1] + 1):
-        row_index = day + 12  # Offset by 12 to account for existing rows
-        cell = daily_activities.cell(row=row_index, column=1, value=f"{day:02d}")
+        start_row_index = 2 * day + 11  # Offset by 12 to account for existing rows]
+        
+        # Merge two rows for each day in columns 1, 2, and 3
+        daily_activities.merge_cells(start_row=start_row_index, start_column=1, end_row=start_row_index + 1, end_column=1)
+        daily_activities.merge_cells(start_row=start_row_index, start_column=2, end_row=start_row_index + 1, end_column=2)
+        daily_activities.merge_cells(start_row=start_row_index, start_column=3, end_row=start_row_index + 1, end_column=3)
+        
+        # Set value for the first cell in the merged range (representing the day)
+        cell = daily_activities.cell(row=start_row_index, column=1)
+        cell.value = f"{day:02d}"
         cell.font = Font(size=10)
         cell.alignment = Alignment(horizontal='center', vertical='center')
         
+        # Set borders for each cell within the merged range
+        for col in ['A', 'B', 'C']:
+            for row in range(start_row_index, start_row_index + 2):
+                cell_address = f'{col}{row}'
+                daily_activities[cell_address].border = Border(top=Side(style='thin', color='000000'),
+                                                                left=Side(style='thin', color='000000'),
+                                                                right=Side(style='thin', color='000000'),
+                                                                bottom=Side(style='thin', color='000000'))
+        
+        # Fetch activities for the current day
         activities_for_day = activities.filter(activityDate__day=day)
-        
-        # Display activities for the day in the second column
+
+        # Combine activities' text and type
         activities_text = "\n".join([activity.userActivity or '' for activity in activities_for_day])
-        
-        # Merge cells for the "Activities" column
+        activities_type = "\n".join([str(activity.get_activity_type()) for activity in activities_for_day])
+
+        # Calculate the number of merged rows for activities
+        num_merged_rows = activities_text.count('\n') + 1
+
+        # Merge cells for the "Activities" column (two rows)
         start_column_letter = get_column_letter(6)  # Column D
         end_column_letter = get_column_letter(15)  # Adjust the last column letter as needed
-        activities_column_range = f"{start_column_letter}{row_index}:{end_column_letter}{row_index}"
+        activities_column_range = f"{start_column_letter}{start_row_index}:{end_column_letter}{(start_row_index + 2)-1}"
         daily_activities.merge_cells(activities_column_range)
 
-        # Set value and font for the cell in column 6
-        activities_cell = daily_activities.cell(row=row_index, column=6, value=activities_text)
+        for col in range(6, 16):
+            bottom_cell_address = f"{get_column_letter(col)}{start_row_index + num_merged_rows}"
+            daily_activities[bottom_cell_address].border = Border(bottom=Side(style='thin', color='000000'))
+
+        # Set value and font for the cell in column 6 (representing activities)
+        
+        activities_cell = daily_activities.cell(row=start_row_index, column=6)
+        activities_cell.value = activities_text
         activities_cell.font = Font(size=10)
 
         # Adjust row height to fit the content of the cell in column 6
-        activities_cell.alignment = Alignment(wrap_text=True)
-
+        activities_cell.alignment = Alignment(wrap_text=True, vertical='center', horizontal='center', indent=5)
+        
         # Calculate the required row height based on the number of lines in the text
-        num_lines = activities_text.count('\n') + 1  # Count the number of lines in the text
-        font_size = 10  # Assuming font size is 10
-        line_height = 1.2 * font_size  # Approximate line height
-        required_height = line_height * num_lines
+        font_size = 10
+        line_height = 1.2 * font_size
+        required_height = line_height * num_merged_rows
 
-        # Adjust the row height to fit the content
-        row_dimension = daily_activities.row_dimensions[row_index]
-        row_dimension.height = required_height
+        # Adjust the row height for each merged row
+        for i in range(start_row_index, start_row_index + num_merged_rows):
+            row_dimension = daily_activities.row_dimensions[i]
+            row_dimension.height = required_height
 
-        activities_type = "\n".join([str(activity.get_activity_type()) for activity in activities_for_day])
-
-        start_column_letter = get_column_letter(2) 
-        end_column_letter = get_column_letter(2)
-
+        # Set the activities type in the appropriate column
         if user.expert in [constants.LOCAL_USER, constants.EXPERT_USER]:
-            cell = daily_activities.cell(row=row_index, column=3 if activities_type == "J" else 2, value=activities_type)
+            cell = daily_activities.cell(row=start_row_index, column=3 if activities_type == "J" else 2)
+            cell.value = activities_type
             cell.alignment = Alignment(horizontal='center', vertical='center')
             cell.font = Font(size=11)
 
@@ -551,20 +576,20 @@ def __add_cover_sheet__(wb, current_month_name, current_year, user, current_date
 
     # Mapping of grades to corresponding columns
     grade_mapping = {
-        'A1': 'C',
-        'A2': 'F',
-        'A3': 'I',
-        'B1': 'C',
-        'B2': 'F',
-        'B3': 'I',
-        'B4': 'C',
-        'B5': 'F',
+        'A1': 'C14',
+        'A2': 'F14',
+        'A3': 'I14',
+        'B1': 'C16',
+        'B2': 'F16',
+        'B3': 'I16',
+        'B4': 'C18',
+        'B5': 'F18',
     }
 
     # # Set the letter '/' in the corresponding cell based on the user's grade
     if user_grade in grade_mapping:
         grade_column = grade_mapping[user_grade]
-        cell_address = f'{grade_column}14'
+        cell_address = grade_column
         cover_ws[cell_address].value = '/'
         cover_ws[cell_address].alignment = Alignment(horizontal='center', vertical='center')
 
@@ -640,7 +665,7 @@ def __add_cover_sheet__(wb, current_month_name, current_year, user, current_date
         day_of_week_cell.alignment = Alignment(horizontal='center', vertical='center')
         day_of_week_cell.fill = grey_fill
         set_borders(cover_ws, 31, [col_address])
-        
+
         # Set the day of the month
         day_of_month_cell = cover_ws[col_address + '32']
         day_of_month_cell.value = str((first_day_of_month + timedelta(days=i - 1)).day)
