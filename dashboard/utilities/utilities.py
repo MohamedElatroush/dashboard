@@ -89,7 +89,8 @@ def convert_company_to_choice(company_string):
         'OCG': constants.OCG,
         'NK': constants.NK,
         'EHAF': constants.EHAF,
-        'ACE': constants.ACE
+        'ACE': constants.ACE,
+        'TD': constants.TD
     }
     return company_mappings.get(company_string, None)
 

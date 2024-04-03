@@ -229,9 +229,9 @@ class UserViewSet(viewsets.ModelViewSet):
 
         try:
             all_usernames = set(User.objects.all().values_list('username', flat=True))
+            
             # Read the Excel file again, this time setting the second row as headers
             dataframe_with_headers = pd.read_excel(excel_file, header=2)
-
             # Find the column index for "HR Code" and "Remarks"
             hr_code_index = dataframe_with_headers.columns.get_loc("HR Code")
             remarks_index = dataframe_with_headers.columns.get_loc("Remarks") if "Remarks" in dataframe_with_headers.columns else None
@@ -239,7 +239,7 @@ class UserViewSet(viewsets.ModelViewSet):
             # If "Remarks" column is not found, we will display all columns up to the last one.
             if remarks_index is None:
                 remarks_index = len(dataframe_with_headers.columns) - 1
-
+            
             # Display the new column headers and a sample of the data to confirm
             dataframe_hr_to_remarks = dataframe_with_headers.iloc[:, hr_code_index:remarks_index+1]
             for index, row in dataframe_hr_to_remarks.iterrows():
@@ -283,7 +283,7 @@ class UserViewSet(viewsets.ModelViewSet):
 
                 # Create a new User object
                 user = User(
-                    username = new_username,  # Assuming the username is the name, you might want to format this.
+                    username = new_username,
                     email=email,
                     first_name=utilities.generate_first_name(name),
                     last_name=utilities.generate_last_name(name),
@@ -306,6 +306,80 @@ class UserViewSet(viewsets.ModelViewSet):
             return Response({'message': 'Data extracted and printed successfully'}, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    
+    @action(detail=False, methods=['post'])
+    def modify_details(self, request, *args, **kwargs):
+        excel_file = request.FILES['file']
+        modified_users = {} 
+        try:
+            dataframe_with_headers = pd.read_excel(excel_file, header=2)
+
+            # Iterate over each row in the DataFrame
+            for index, row in dataframe_with_headers.iterrows():
+                # Extract username from the current row
+                username = row['USER Name']
+                # Check if a user with this username already exists
+                existing_user = User.objects.filter(username=username).first()
+                email = row['Email Address']
+                organization_code = row['Organization Code']
+                position = row['Position']
+                department = row['Department']
+                nat_group = row['NAT Group']
+                nat_group_choice = utilities.convert_nat_group_to_choice(nat_group)
+                working_location = row['Working Location']
+                expert = row['Expert']
+                expert_choice = utilities.convert_expert_to_choice(expert)
+                mobilization_status = row['Mobilization status']
+                company = row['Company']
+                company_choice = utilities.convert_company_to_choice(company)
+
+                name = row['Name']
+
+                if existing_user:
+                    modified_fields = []  # List to store modified fields for this user
+                    if existing_user.email != email:
+                        existing_user.email = email
+                        modified_fields.append('email')
+                    if existing_user.first_name != utilities.generate_first_name(name):
+                        existing_user.first_name = utilities.generate_first_name(name)
+                        modified_fields.append('first_name')
+                    if existing_user.last_name != utilities.generate_last_name(name):
+                        existing_user.last_name = utilities.generate_last_name(name)
+                        modified_fields.append('last_name')
+                    if existing_user.organizationCode != organization_code:
+                        existing_user.organizationCode = organization_code
+                        modified_fields.append('organizationCode')
+                    if existing_user.position != position:
+                        existing_user.position = position
+                        modified_fields.append('position')
+                    if existing_user.department != department:
+                        existing_user.department = department
+                        modified_fields.append('department')
+                    if existing_user.natGroup != nat_group_choice:
+                        existing_user.natGroup = nat_group_choice
+                        modified_fields.append('natGroup')
+                    if existing_user.workingLocation != working_location:
+                        existing_user.workingLocation = working_location
+                        modified_fields.append('workingLocation')
+                    if existing_user.expert != expert_choice:
+                        existing_user.expert = expert_choice
+                        modified_fields.append('expert')
+                    if existing_user.mobilization != mobilization_status:
+                        existing_user.mobilization = mobilization_status
+                        modified_fields.append('mobilization')
+                    if existing_user.company != company_choice:
+                        existing_user.company = company_choice
+                        modified_fields.append('company')
+                    
+                    if modified_fields:  # Check if any fields were modified
+                        modified_users[existing_user.username] = modified_fields  # Add to dictionary
+                
+                    existing_user.save()
+                break
+        except Exception as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        # Return the dictionary of modified users and their modified fields
+        return Response({'modified_users': modified_users}, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=['PATCH'], url_path=r'change_password/(?P<userId>\w+(?:-\w+)*)')
     def change_password(self, request, *args, **kwargs):

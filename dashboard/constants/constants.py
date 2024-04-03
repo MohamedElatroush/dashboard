@@ -51,12 +51,14 @@ OCG = 0
 NK = 1
 EHAF = 2
 ACE = 3
+TD = 4
 
 COMPANY_CHOICES = (
     (OCG, _('OCG')),
     (NK, _('NK')),
     (EHAF, _('EHAF')),
     (ACE, _('ACE')),
+    (TD, _('TD')),
 )
 
 SUCCESSFULLY_DELETED_USER = {
