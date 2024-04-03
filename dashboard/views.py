@@ -331,8 +331,8 @@ class UserViewSet(viewsets.ModelViewSet):
         end_date = end_date + timedelta(days=1)
 
         total_working_days_expert = np.busday_count(start_date, end_date, weekmask='0011111')
-        cover_ws['F38'].value = total_working_days_expert
-        cover_ws['F38'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
+        cover_ws['F42'].value = total_working_days_expert
+        cover_ws['F42'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
 
         start_date = current_date.replace(day=1)
         last_day_of_month = calendar.monthrange(current_date.year, current_date.month)[1]
@@ -391,6 +391,10 @@ class UserViewSet(viewsets.ModelViewSet):
                 activityDate__month=current_date.month,
                 activityDate__year=current_date.year,
             ).filter(activityType__in=[constants.HOMEASSIGN]).count()
+
+            total_working_days_expert = np.busday_count(start_date, end_date, weekmask='0011111')
+            cover_ws['F42'].value = total_working_days_expert
+            cover_ws['F42'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
 
             cover_ws['C42'].value = activities_japan
             cover_ws['C42'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
@@ -552,20 +556,20 @@ class UserViewSet(viewsets.ModelViewSet):
 
         # Mapping of grades to corresponding columns
         grade_mapping = {
-            'A1': 'C',
-            'A2': 'F',
-            'A3': 'I',
-            'B1': 'C',
-            'B2': 'F',
-            'B3': 'I',
-            'B4': 'C',
-            'B5': 'F',
+            'A1': 'C14',
+            'A2': 'F14',
+            'A3': 'I14',
+            'B1': 'C16',
+            'B2': 'F16',
+            'B3': 'I16',
+            'B4': 'C18',
+            'B5': 'F18',
         }
 
         # # Set the letter '/' in the corresponding cell based on the user's grade
         if user_grade in grade_mapping:
             grade_column = grade_mapping[user_grade]
-            cell_address = f'{grade_column}14'
+            cell_address = grade_column
             cover_ws[cell_address].value = '/'
             cover_ws[cell_address].alignment = Alignment(horizontal='center', vertical='center')
 
@@ -1130,8 +1134,8 @@ class ActivityViewSet(viewsets.ModelViewSet):
         end_date = end_date + timedelta(days=1)
 
         total_working_days_expert = np.busday_count(start_date, end_date, weekmask='0011111')
-        cover_ws['F38'].value = total_working_days_expert
-        cover_ws['F38'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
+        cover_ws['F42'].value = total_working_days_expert
+        cover_ws['F42'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
         ##### EXPERT #####
 
         start_date = current_date.date().replace(day=1)
@@ -1176,22 +1180,22 @@ class ActivityViewSet(viewsets.ModelViewSet):
                             working_days -= 1
 
         # Add "0" under "Cairo" for local users
-        cover_ws['D38'].value = working_days
-        cover_ws['D38'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
-        cover_ws['G38'].value = total_working_days
-        cover_ws['G38'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
+        cover_ws['D42'].value = working_days
+        cover_ws['D42'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
+        cover_ws['G42'].value = total_working_days
+        cover_ws['G42'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
 
-        cover_ws['C38'].value = 0
-        cover_ws['C38'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
+        cover_ws['C42'].value = 0
+        cover_ws['C42'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
 
-        cover_ws['J38'].value = round(cover_ws['D38'].value / cover_ws['G38'].value, 3)
-        cover_ws['J38'].font = Font(size=11)
-        cover_ws['J38'].alignment = Alignment(horizontal='center', vertical='center')
+        cover_ws['J42'].value = round(cover_ws['D42'].value / cover_ws['G42'].value, 3)
+        cover_ws['J42'].font = Font(size=11)
+        cover_ws['J42'].alignment = Alignment(horizontal='center', vertical='center')
 
          # Japan NOD/TCD
-        cover_ws['I38'].value = round(cover_ws['C38'].value / cover_ws['F38'].value, 3)
-        cover_ws['I38'].font = Font(size=11)
-        cover_ws['I38'].alignment = Alignment(horizontal='center', vertical='center')
+        cover_ws['I42'].value = round(cover_ws['C42'].value / cover_ws['F42'].value, 3)
+        cover_ws['I42'].font = Font(size=11)
+        cover_ws['I42'].alignment = Alignment(horizontal='center', vertical='center')
 
     def __add_expert_working_days__(self, current_date, user, cover_ws):
         ###### LOCAL ######
@@ -1221,29 +1225,29 @@ class ActivityViewSet(viewsets.ModelViewSet):
         # Count the number of activities
         working_days = activities.count()
 
-        cover_ws['C38'].value = working_days
-        cover_ws['C38'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
+        cover_ws['C42'].value = working_days
+        cover_ws['C42'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
 
-        cover_ws['F38'].value = total_working_days
-        cover_ws['F38'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
+        cover_ws['F42'].value = total_working_days
+        cover_ws['F42'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
 
         # Cairo NOD
-        cover_ws['D38'].value = 0
-        cover_ws['D38'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
+        cover_ws['D42'].value = 0
+        cover_ws['D42'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
 
         # Cairo TCD
-        cover_ws['G38'].value = total_working_days_cairo
-        cover_ws['G38'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
+        cover_ws['G42'].value = total_working_days_cairo
+        cover_ws['G42'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
 
         # Japan NOD/TCD
-        cover_ws['I38'].value = round(cover_ws['C38'].value / cover_ws['F38'].value, 3)
-        cover_ws['I38'].font = Font(size=11)
-        cover_ws['I38'].alignment = Alignment(horizontal='center', vertical='center')
+        cover_ws['I42'].value = round(cover_ws['C38'].value / cover_ws['F42'].value, 3)
+        cover_ws['I42'].font = Font(size=11)
+        cover_ws['I42'].alignment = Alignment(horizontal='center', vertical='center')
 
         # Cairo NOD/TCD
-        cover_ws['J38'].value = 0
-        cover_ws['J38'].font = Font(size=11)
-        cover_ws['J38'].alignment = Alignment(horizontal='center', vertical='center')
+        cover_ws['J42'].value = 0
+        cover_ws['J42'].font = Font(size=11)
+        cover_ws['J42'].alignment = Alignment(horizontal='center', vertical='center')
 
     def set_borders(self, ws, row, columns):
         for col in columns:
