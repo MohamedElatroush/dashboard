@@ -306,7 +306,7 @@ class UserViewSet(viewsets.ModelViewSet):
             return Response({'message': 'Data extracted and printed successfully'}, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
-    
+
     @action(detail=False, methods=['post'])
     def modify_details(self, request, *args, **kwargs):
         excel_file = request.FILES['file']
@@ -1564,6 +1564,36 @@ class ActivityViewSet(viewsets.ModelViewSet):
         activity.save()
 
         return Response(status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=['POST'], url_path=r'admin/log/(?P<userId>\w+(?:-\w+)*)')
+    def admin_log_activity(self, request, *args, **kwargs):
+        requestId = request.user.id
+        if not utilities.check_is_admin(requestId):
+            return Response(status=status.HTTP_403_FORBIDDEN)
+
+        userId = kwargs['userId']
+
+        serializer = CreateActivitySerializer(data=request.data)
+        serializer.is_valid()
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        userActivity = serializer.validated_data.get('userActivity', None)
+        activityType = serializer.validated_data.get('activityType', None)
+        activityDate = serializer.validated_data.get('activityDate', None)
+        # Check if the user has already logged an activity today
+        existing_activity = Activity.objects.filter(user__id=userId, activityDate=activityDate).first()
+
+        if existing_activity:
+            return Response({"detail": "An activity for the selected date already exists. Please delete it firstly."}, status=status.HTTP_400_BAD_REQUEST)
+
+        new_activity = Activity.objects.create(userActivity=userActivity,\
+                                                activityType=activityType,\
+                                                user_id=userId,
+                                                activityDate=activityDate)
+        new_activity.save()
+
+        return Response(status=status.HTTP_201_CREATED)
 
 class LatestFileView(viewsets.ModelViewSet):
     @action(detail=False, methods=['GET'], url_path=r'activities/own_timesheet/(?P<userId>\w+(?:-\w+)*)')

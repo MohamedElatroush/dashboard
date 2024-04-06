@@ -199,12 +199,15 @@ def __add_local_working_days__(current_date, user, cover_ws):
 
         cover_ws['C42'].value = activities_japan
         cover_ws['C42'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
-        cover_ws['J42'].value = round(cover_ws['D42'].value / cover_ws['G42'].value, 3)
+
+        formula = "=ROUND(D42/G42, 3)"
+        cover_ws["J42"].value = formula
         cover_ws['J42'].font = Font(size=11)
         cover_ws['J42'].alignment = Alignment(horizontal='center', vertical='center')
 
          # Japan NOD/TCD
-        cover_ws['I42'].value = round(cover_ws['C42'].value / cover_ws['F42'].value, 3)
+        formula = "=ROUND(C42/F42, 3)"
+        cover_ws['I42'].value = formula
         cover_ws['I42'].font = Font(size=11)
         cover_ws['I42'].alignment = Alignment(horizontal='center', vertical='center')
 
@@ -262,12 +265,14 @@ def __add_expert_working_days__(current_date, user, cover_ws):
         cover_ws['G42'].alignment = Alignment(horizontal='center', vertical='center')  # Center the text
 
         # Japan NOD/TCD
-        cover_ws['I42'].value = round(cover_ws['C42'].value / cover_ws['F42'].value, 3)
+        formula = "=ROUND(C42/F42, 3)"
+        cover_ws['I42'].value = formula
         cover_ws['I42'].font = Font(size=11)
         cover_ws['I42'].alignment = Alignment(horizontal='center', vertical='center')
 
         # Cairo NOD/TCD
-        cover_ws['J42'].value = round(cover_ws['D42'].value / cover_ws['G42'].value, 3)
+        formula = "=ROUND(D42/G42, 3)"
+        cover_ws['J42'].value = formula
         cover_ws['J42'].font = Font(size=11)
         cover_ws['J42'].alignment = Alignment(horizontal='center', vertical='center')
 
