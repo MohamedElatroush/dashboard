@@ -973,7 +973,7 @@ class UserViewSet(viewsets.ModelViewSet):
                 cell = ws.cell(row=row, column=col)
                 cell.border = name_year_month_border
 
-        cell = ws.cell(row=8, column=7, value=user.get_full_name())
+        cell = ws.cell(row=8, column=7, value=user.username)
         cell.font = Font(bold=True, size=12)
 
         # Set alignment
@@ -1438,8 +1438,7 @@ class ActivityViewSet(viewsets.ModelViewSet):
                 end_date = date.replace(day=calendar.monthrange(date.year, date.month)[1])
                 end_date = end_date + relativedelta(days=1)
 
-                total_working_days_japan = np.busday_count(start_date, end_date, weekmask='0011111')
-
+                total_working_days_japan = constants.JAPAN_WORKING_DAYS[start_date.month]
                 # Filter activities for the current user and month excluding 'H' type activities
                 activities = Activity.objects.filter(
                     user=user,
@@ -1475,7 +1474,7 @@ class ActivityViewSet(viewsets.ModelViewSet):
                 last_day_of_month = calendar.monthrange(date.year, date.month)[1]
                 end_date = date.replace(day=last_day_of_month) + timedelta(days=1)
                 total_working_days_cairo = np.busday_count(start_date, end_date, weekmask='1111111')
-                total_working_days_japan = np.busday_count(start_date, end_date, weekmask='0011111')
+                total_working_days_japan = constants.JAPAN_WORKING_DAYS[start_date.month]
                 # Iterate through each day in the range
 
                 # Filter activities for the current user and month excluding 'H' type activities
@@ -1512,7 +1511,8 @@ class ActivityViewSet(viewsets.ModelViewSet):
                 end_date = date.replace(day=calendar.monthrange(date.year, date.month)[1])
                 end_date = end_date + relativedelta(days=1)
 
-                total_working_days_japan = np.busday_count(start_date, end_date, weekmask='0011111')
+                total_working_days_japan = constants.JAPAN_WORKING_DAYS[start_date.month]
+                np.busday_count(start_date, end_date, weekmask='0011111')
 
                 activities_japan = Activity.objects.filter(
                     user=user,

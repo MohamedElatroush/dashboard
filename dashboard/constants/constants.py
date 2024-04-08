@@ -147,3 +147,18 @@ DEP_MAPPING = {
     PSD: 'Power Supply Department',
     RSMD: 'Rolling Stock & Mechanical Department',
 }
+
+JAPAN_WORKING_DAYS = {
+    1: 20,
+    2: 19,
+    3: 20,
+    4: 21,
+    5: 22,
+    6: 20,
+    7: 22,
+    8: 21,
+    9: 19,
+    10: 22,
+    11: 20,
+    12: 22
+}
