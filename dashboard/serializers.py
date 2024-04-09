@@ -74,7 +74,6 @@ class ActivitySerializer(serializers.ModelSerializer):
         else:
             # Return a default value or handle the case as needed
             return ""
-        
     def get_hrCode(self, obj):
         if obj.user:
             return obj.user.hrCode
