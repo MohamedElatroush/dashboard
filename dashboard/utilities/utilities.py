@@ -124,7 +124,6 @@ def generate_last_name(name):
     return None
 
 def __add_local_working_days__(current_date, user, cover_ws):
-    ##### EXPERT #####
     start_date = current_date.date().replace(day=1)
     last_day_of_month = calendar.monthrange(current_date.date().year, current_date.date().month)[1]
     end_date = (current_date.date() + timedelta(days=last_day_of_month)).replace(day=1)
@@ -540,10 +539,6 @@ def __add_cover_sheet__(wb, current_month_name, current_year, user, current_date
 
     year_label_cell = cover_ws.cell(row=5, column=13, value=current_year)
     year_label_cell.font = Font(bold=True, size=10)
-    year_label_cell.border = border_style 
-
-    year_label_cell = cover_ws.cell(row=5, column=13, value=current_year)
-    year_label_cell.font = Font(bold=True, size=12)
     year_label_cell.border = border_style
 
     cover_ws.merge_cells(start_row=5, start_column=3, end_row=5, end_column=6)  # Modified here
