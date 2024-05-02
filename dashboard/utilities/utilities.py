@@ -291,7 +291,7 @@ def __format_cell__(cell, value, size=11, italic=False, center=True):
     if center:
         cell.alignment = Alignment(horizontal='center', vertical='center')
 
-def __add_daily_activities_sheet__(wb, current_date, user):
+def __add_daily_activities_sheet__(wb, current_date, user, counter):
     # Extract month and year
     month = current_date.month
     year = current_date.year
@@ -300,7 +300,7 @@ def __add_daily_activities_sheet__(wb, current_date, user):
     activities = Activity.objects.filter(activityDate__month=month, activityDate__year=year, user__id=user.id).order_by('-created')
     user = User.objects.get(id=user.id)
 
-    daily_activities = wb.create_sheet(title=f"{user.first_name} (DA)")
+    daily_activities = wb.create_sheet(title=f"{str(counter)} (DA)")
 
     dateFont = Font(size=16)
 
@@ -498,8 +498,8 @@ def __add_daily_activities_sheet__(wb, current_date, user):
             cell.alignment = Alignment(horizontal='center', vertical='center')
             cell.font = Font(size=11)
 
-def __add_cover_sheet__(wb, current_month_name, current_year, user, current_date, current_month):
-    cover_ws = wb.create_sheet(title=str(user.first_name))
+def __add_cover_sheet__(wb, current_month_name, current_year, user, current_date, current_month, counter):
+    cover_ws = wb.create_sheet(title=str(counter))
 
     # Merge and set the title
     border_style = Border(
@@ -897,10 +897,12 @@ def create_activity_excel_report(users, activities, selected_date, companyName, 
     # Create a new Excel workbook and add a worksheet
     wb = Workbook()
 
+    counter = 1
     # Create individual timesheet/daily activities for every user
     for user in users:
-        __add_cover_sheet__(wb, current_month_name, current_year, user, current_date, current_month)
-        __add_daily_activities_sheet__(wb, current_date, user)
+        __add_cover_sheet__(wb, current_month_name, current_year, user, current_date, current_month, counter)
+        __add_daily_activities_sheet__(wb, current_date, user, counter)
+        counter += 1
 
     ws = wb.active
     ws.title = "TS"
