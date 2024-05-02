@@ -2,12 +2,8 @@ from django.utils import timezone
 from ..models import Activity, User
 from datetime import datetime
 from ..constants import constants
-from datetime import date
 from ..utilities.utilities import create_activity_excel_report
-from django.db.models import Q
-import boto3
-from django.conf import settings
-from botocore.exceptions import NoCredentialsError
+from django.db.models import F
 
 
 def holidays():
@@ -43,7 +39,7 @@ def holidays():
 
 def generate_noce_timesheet(users=None, companyName=None, date=None):
     if not users:
-        users = User.objects.all().exclude(isAdmin=True)
+        users = User.objects.all().exclude(isAdmin=True).order_by(F('grade').asc(nulls_last=True))
 
     activities = Activity.objects.filter(user__in=users,\
                                           activityDate__year=date.year, \
