@@ -500,6 +500,18 @@ def __add_daily_activities_sheet__(wb, current_date, user, counter):
 
 def __add_cover_sheet__(wb, current_month_name, current_year, user, current_date, current_month, counter):
     cover_ws = wb.create_sheet(title=str(counter))
+    # Set print area to end at S54
+    cover_ws.print_area = 'A1:A2'
+    
+    # Adjust page margins
+    cover_ws.page_margins.left = 0.5
+    cover_ws.page_margins.right = 0.5
+    cover_ws.page_margins.top = 0.5
+    cover_ws.page_margins.bottom = 0.5
+
+    # Adjust scaling to fit the content to fewer pages
+    cover_ws.page_setup.fitToWidth = 1
+    cover_ws.page_setup.fitToHeight = 0
 
     # Merge and set the title
     border_style = Border(
@@ -513,6 +525,8 @@ def __add_cover_sheet__(wb, current_month_name, current_year, user, current_date
     parent_parent_directory = os.path.dirname(parent_directory)
     logo_path = os.path.join(parent_parent_directory, 'static', 'images', 'logo.png')
     img = Image(logo_path)
+    img.height = 1.08 * 72  # 1 inch = 72 points
+    img.width = 1.14 * 72
     # Add the image to the worksheet
     cover_ws.add_image(img, 'Q2')
 
@@ -838,19 +852,19 @@ def __add_cover_sheet__(wb, current_month_name, current_year, user, current_date
         cell = cover_ws[col_letter + '40']
         cell.border = Border(bottom=Side(style='thick'))
 
-    cover_ws.merge_cells("B43:F43")
-    cover_ws.merge_cells("M43:Q43")
+    cover_ws.merge_cells("B42:F42")
+    cover_ws.merge_cells("M42:Q42")
     labels = {
-        'B43': "J = Working day In Japan",
-        'M43': "C = Working day In Cairo",
-        'B45': "H = Official Holiday In Cairo",
-        'M45': "X = Day off",
-        'B49': "Note: According to the contract 81/M the total days are working days in Cairo plus to official holiday in Egypt\n *NOD=C (Working day in Cairo)+H (Official Holiday in Egypt)"
+        'B42': "J = Working day In Japan",
+        'M42': "C = Working day In Cairo",
+        'B44': "H = Official Holiday In Cairo",
+        'M44': "X = Day off",
+        'B46': "Note: According to the contract 81/M the total days are working days in Cairo plus to official holiday in Egypt\n *NOD=C (Working day in Cairo)+H (Official Holiday in Egypt)"
     }
 
-    cover_ws.merge_cells(start_row=49, start_column=2, end_row=51, end_column=14)
-    cell = cover_ws['B49']
-    cell.value = labels['B49']
+    cover_ws.merge_cells(start_row=46, start_column=2, end_row=48, end_column=14)
+    cell = cover_ws['B46']
+    cell.value = labels['B46']
 
     # Enable text wrapping
     cell.alignment = Alignment(wrap_text=True)
@@ -865,6 +879,13 @@ def __add_cover_sheet__(wb, current_month_name, current_year, user, current_date
     for col_letter in range(ord('A'), ord('S')):
         col_letter = chr(col_letter)
         cover_ws.column_dimensions[col_letter].width = 4.5
+
+    for row in range(49, cover_ws.max_row + 1):
+        cover_ws.row_dimensions[row].hidden = True
+
+    # Hide columns beyond S
+    for col in range(19, cover_ws.max_column + 1):
+        cover_ws.column_dimensions[get_column_letter(col)].hidden = True
 
 def create_activity_excel_report(users, activities, selected_date, companyName, date):
     date = datetime.combine(date, datetime.min.time())
