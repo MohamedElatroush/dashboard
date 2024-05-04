@@ -283,7 +283,9 @@ def set_other_borders(ws, row, columns):
     for col in columns:
         cell_address = f'{col}{row}'
         ws[cell_address].border = Border(right=Side(style='thin', color='000000'),
-                                        bottom=Side(style='thin', color='000000'))
+                                        bottom=Side(style='thin', color='000000'),
+                                        left=Side(style='thin', color='000000'),
+                                        top=Side(style='thin', color='000000'))
 
 def __format_cell__(cell, value, size=11, italic=False, center=True):
     cell.value = value
@@ -500,6 +502,7 @@ def __add_daily_activities_sheet__(wb, current_date, user, counter):
 
 def __add_cover_sheet__(wb, current_month_name, current_year, user, current_date, current_month, counter):
     cover_ws = wb.create_sheet(title=str(counter))
+    cover_ws.page_setup.print_scaling = 90
     # Set print area to end at S54
     cover_ws.print_area = 'A1:A2'
     
@@ -516,7 +519,6 @@ def __add_cover_sheet__(wb, current_month_name, current_year, user, current_date
     # Merge and set the title
     border_style = Border(
         bottom=Side(border_style='thin'),
-        right=Side(border_style="thin")
     )
 
     # add the logo
@@ -551,9 +553,9 @@ def __add_cover_sheet__(wb, current_month_name, current_year, user, current_date
     year_label_cell.font = Font(bold=True, size=12)
     year_label_cell.alignment = Alignment(horizontal='left')
 
+    cover_ws.merge_cells(start_row=5, start_column=13, end_row=5, end_column=14)  # Modified here
     year_label_cell = cover_ws.cell(row=5, column=13, value=current_year)
     year_label_cell.font = Font(bold=True, size=10)
-    year_label_cell.border = border_style
 
     cover_ws.merge_cells(start_row=5, start_column=3, end_row=5, end_column=6)  # Modified here
     value_year_cell = cover_ws.cell(row=5, column=3, value=current_month_name)
@@ -565,11 +567,16 @@ def __add_cover_sheet__(wb, current_month_name, current_year, user, current_date
     name_label_cell = cover_ws.cell(row=7, column=1, value="Name:")
     name_label_cell.font = Font(bold=True, size=12)
 
-    cover_ws.merge_cells(start_row=7, start_column=3, end_row=7, end_column=6)  # Modified here
-    name_label_cell = cover_ws.cell(row=7, column=3, value=str(user.username))
+    cover_ws.merge_cells(start_row=7, start_column=3, end_row=7, end_column=10)  # Modified here
+    name_label_cell = cover_ws.cell(row=7, column=3, value=str(user.get_full_name()))
     name_label_cell.font = Font(bold=True, size=12)
-    for column in range(3, 7):  # Columns 3 to 6 inclusive
+
+    for column in range(3, 11):  # Columns 3 to 10 inclusive
         cell = cover_ws.cell(row=7, column=column)
+        cell.border = border_style
+
+    for column in range(13, 15):  # Columns 3 to 10 inclusive
+        cell = cover_ws.cell(row=5, column=column)
         cell.border = border_style
 
     user_grade = user.get_grade()
@@ -842,27 +849,38 @@ def __add_cover_sheet__(wb, current_month_name, current_year, user, current_date
     cover_ws['O32'].border = Border(right=Side(style='thin', color='000000'))
 
     # Project Director cell (B38)
-    __format_cell__(cover_ws['B38'], "NOCE Approval")
+    __format_cell__(cover_ws['C38'], "NOCE Approval")
 
     # NAT Approval cell (L38)
     __format_cell__(cover_ws['L38'], "NAT Approval")
 
+    cover_ws.merge_cells(start_row=38, start_column=3, end_row=38, end_column=6)
+    cover_ws.merge_cells(start_row=38, start_column=12, end_row=38, end_column=15)
+
     for col_letter in range(ord('A'), ord('S')):
         col_letter = chr(col_letter)
-        cell = cover_ws[col_letter + '40']
+        cell = cover_ws[col_letter + '42']
         cell.border = Border(bottom=Side(style='thick'))
 
-    cover_ws.merge_cells("B42:F42")
-    cover_ws.merge_cells("M42:Q42")
+    for column in range(3, 7):  # Columns 3 to 10 inclusive
+        cell = cover_ws.cell(row=41, column=column)
+        cell.border = border_style
+
+    for column in range(12, 16):  # Columns 3 to 10 inclusive
+        cell = cover_ws.cell(row=41, column=column)
+        cell.border = border_style
+
+    cover_ws.merge_cells("B43:F43")
+    cover_ws.merge_cells("M43:Q43")
     labels = {
-        'B42': "J = Working day In Japan",
-        'M42': "C = Working day In Cairo",
+        'B43': "J = Working day In Japan",
+        'M43': "C = Working day In Cairo",
         'B44': "H = Official Holiday In Cairo",
         'M44': "X = Day off",
         'B46': "Note: According to the contract 81/M the total days are working days in Cairo plus to official holiday in Egypt\n *NOD=C (Working day in Cairo)+H (Official Holiday in Egypt)"
     }
 
-    cover_ws.merge_cells(start_row=46, start_column=2, end_row=48, end_column=14)
+    cover_ws.merge_cells(start_row=46, start_column=2, end_row=48, end_column=17)
     cell = cover_ws['B46']
     cell.value = labels['B46']
 
@@ -880,12 +898,16 @@ def __add_cover_sheet__(wb, current_month_name, current_year, user, current_date
         col_letter = chr(col_letter)
         cover_ws.column_dimensions[col_letter].width = 4.5
 
-    for row in range(49, cover_ws.max_row + 1):
+    for row in range(48, cover_ws.max_row + 1):
         cover_ws.row_dimensions[row].hidden = True
 
     # Hide columns beyond S
     for col in range(19, cover_ws.max_column + 1):
         cover_ws.column_dimensions[get_column_letter(col)].hidden = True
+    # Set the height of all rows to 15 points
+    for row in cover_ws.iter_rows():
+        for cell in row:
+            cover_ws.row_dimensions[cell.row].height = 15
 
 def create_activity_excel_report(users, activities, selected_date, companyName, date):
     date = datetime.combine(date, datetime.min.time())
