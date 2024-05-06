@@ -422,7 +422,7 @@ def __add_daily_activities_sheet__(wb, current_date, user, counter):
         header_cell = daily_activities.cell(row=12, column=col, value=["Day", "Cairo", "Japan"][col - 1])
         header_cell.font = dateFont
         header_cell.border = headers_border
-        header_cell.alignment = Alignment(textRotation=90, vertical='center')
+        header_cell.alignment = Alignment(vertical='center')
 
     cell = daily_activities.cell(row=12, column=6, value="DAILY ACTIVITIES")
     cell.font = dateFont
@@ -430,30 +430,24 @@ def __add_daily_activities_sheet__(wb, current_date, user, counter):
 
     # Center the text horizontally and vertically
     cell.alignment = Alignment(horizontal='center', vertical='center')
-    
+
     for day in range(1, calendar.monthrange(year, month)[1] + 1):
-        start_row_index = 2 * day + 11  # Offset by 12 to account for existing rows]
-        
-        # Merge two rows for each day in columns 1, 2, and 3
-        daily_activities.merge_cells(start_row=start_row_index, start_column=1, end_row=start_row_index + 1, end_column=1)
-        daily_activities.merge_cells(start_row=start_row_index, start_column=2, end_row=start_row_index + 1, end_column=2)
-        daily_activities.merge_cells(start_row=start_row_index, start_column=3, end_row=start_row_index + 1, end_column=3)
-        
-        # Set value for the first cell in the merged range (representing the day)
+        start_row_index = day + 12  # Offset by 12 to account for existing rows]
+
         cell = daily_activities.cell(row=start_row_index, column=1)
         cell.value = f"{day:02d}"
         cell.font = Font(size=10)
         cell.alignment = Alignment(horizontal='center', vertical='center')
-        
+
         # Set borders for each cell within the merged range
         for col in ['A', 'B', 'C']:
-            for row in range(start_row_index, start_row_index + 2):
+            for row in range(start_row_index, start_row_index + 1):
                 cell_address = f'{col}{row}'
                 daily_activities[cell_address].border = Border(top=Side(style='thin', color='000000'),
                                                                 left=Side(style='thin', color='000000'),
                                                                 right=Side(style='thin', color='000000'),
                                                                 bottom=Side(style='thin', color='000000'))
-        
+
         # Fetch activities for the current day
         activities_for_day = activities.filter(activityDate__day=day)
 
@@ -464,29 +458,21 @@ def __add_daily_activities_sheet__(wb, current_date, user, counter):
         # Calculate the number of merged rows for activities
         num_merged_rows = activities_text.count('\n') + 1
 
-        # Merge cells for the "Activities" column (two rows)
-        start_column_letter = get_column_letter(6)  # Column D
-        end_column_letter = get_column_letter(15)  # Adjust the last column letter as needed
-        activities_column_range = f"{start_column_letter}{start_row_index}:{end_column_letter}{(start_row_index + 2)-1}"
-        daily_activities.merge_cells(activities_column_range)
-
         for col in range(6, 16):
-            bottom_cell_address = f"{get_column_letter(col)}{start_row_index + num_merged_rows}"
+            bottom_cell_address = f"{get_column_letter(col)}{start_row_index + num_merged_rows - 1}"
             daily_activities[bottom_cell_address].border = Border(bottom=Side(style='thin', color='000000'))
 
-        # Set value and font for the cell in column 6 (representing activities)
-        
-        activities_cell = daily_activities.cell(row=start_row_index, column=6)
-        activities_cell.value = activities_text
-        activities_cell.font = Font(size=10)
+        merged_range = f"F{start_row_index}:O{start_row_index + num_merged_rows - 1}"  # Update the range accordingly
+        daily_activities.merge_cells(merged_range)
+        merged_cell = daily_activities.cell(row=start_row_index, column=6)  # Top-left cell of the merged range
+        merged_cell.value = activities_text
+        merged_cell.font = Font(size=10)
+        merged_cell.alignment = Alignment(wrap_text=True, vertical='center', horizontal='left')
 
-        # Adjust row height to fit the content of the cell in column 6
-        activities_cell.alignment = Alignment(wrap_text=True, vertical='center', horizontal='center', indent=5)
-        
-        # Calculate the required row height based on the number of lines in the text
         font_size = 10
         line_height = 1.2 * font_size
-        required_height = line_height * num_merged_rows
+        row_height_factor = 2
+        required_height = line_height * num_merged_rows * row_height_factor
 
         # Adjust the row height for each merged row
         for i in range(start_row_index, start_row_index + num_merged_rows):
