@@ -827,12 +827,21 @@ def __add_cover_sheet__(wb, current_month_name, current_year, user, current_date
 
     cover_ws['G33'].border = Border(right=Side(style='thin', color='000000'))
     cover_ws['G32'].border = Border(right=Side(style='thin', color='000000'))
+    cover_ws['D33'].border = Border(left=Side(style='thin', color='000000'))
+    cover_ws['D32'].border = Border(left=Side(style='thin', color='000000'))
 
     cover_ws['K33'].border = Border(right=Side(style='thin', color='000000'))
     cover_ws['K32'].border = Border(right=Side(style='thin', color='000000'))
+    cover_ws['H33'].border = Border(left=Side(style='thin', color='000000'))
+    cover_ws['H32'].border = Border(left=Side(style='thin', color='000000'))
 
     cover_ws['O33'].border = Border(right=Side(style='thin', color='000000'))
     cover_ws['O32'].border = Border(right=Side(style='thin', color='000000'))
+    cover_ws['L33'].border = Border(left=Side(style='thin', color='000000'))
+    cover_ws['L32'].border = Border(left=Side(style='thin', color='000000'))
+
+    for char in ['D', 'E', 'F', 'G', "H", "I", "J", "K", "L", "M", "N", "O"]:
+        cover_ws[f'{char}32'].border = Border(top=Side(style='thin', color='000000'), left=Side(style='thin', color='000000'), right=Side(style="thin", color="000000"))
 
     # Project Director cell (B38)
     __format_cell__(cover_ws['C38'], "NOCE Approval")
