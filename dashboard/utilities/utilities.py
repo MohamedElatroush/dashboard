@@ -331,6 +331,8 @@ def __add_daily_activities_sheet__(wb, current_date, user, counter):
     parent_parent_directory = os.path.dirname(parent_directory)
     logo_path = os.path.join(parent_parent_directory, 'static', 'images', 'logo.png')
     img = Image(logo_path)
+    img.height = 1.08 * 72  # 1 inch = 72 points
+    img.width = 1.14 * 72
     daily_activities.add_image(img, 'M2')
 
     # Set font and border for "Year:" label in cell A8
@@ -371,10 +373,10 @@ def __add_daily_activities_sheet__(wb, current_date, user, counter):
 
     daily_activities.merge_cells(start_row=8, start_column=7, end_row=8, end_column=11)
     daily_activities.merge_cells(start_row=9, start_column=7, end_row=9, end_column=11)
-    daily_activities.merge_cells(start_row=12, start_column=6, end_row=12, end_column=15)
+    daily_activities.merge_cells(start_row=12, start_column=5, end_row=12, end_column=14)
 
     for row in range(12, 13):
-        for col in range(6, 16):
+        for col in range(5, 15):
             cell = daily_activities.cell(row=row, column=col)
             cell.border = name_year_month_border
 
@@ -424,7 +426,7 @@ def __add_daily_activities_sheet__(wb, current_date, user, counter):
         header_cell.border = headers_border
         header_cell.alignment = Alignment(vertical='center')
 
-    cell = daily_activities.cell(row=12, column=6, value="DAILY ACTIVITIES")
+    cell = daily_activities.cell(row=12, column=5, value="DAILY ACTIVITIES")
     cell.font = dateFont
     cell.border = name_year_month_border
 
@@ -458,13 +460,13 @@ def __add_daily_activities_sheet__(wb, current_date, user, counter):
         # Calculate the number of merged rows for activities
         num_merged_rows = activities_text.count('\n') + 1
 
-        for col in range(6, 16):
+        for col in range(5, 14):
             bottom_cell_address = f"{get_column_letter(col)}{start_row_index}"
             daily_activities[bottom_cell_address].border = Border(bottom=Side(style='thin', color='000000'))
 
-        merged_range = f"F{start_row_index}:O{start_row_index}"  # Update the range accordingly
+        merged_range = f"E{start_row_index}:N{start_row_index}"  # Update the range accordingly
         daily_activities.merge_cells(merged_range)
-        merged_cell = daily_activities.cell(row=start_row_index, column=6)  # Top-left cell of the merged range
+        merged_cell = daily_activities.cell(row=start_row_index, column=5)  # Top-left cell of the merged range
         merged_cell.value = activities_text
         merged_cell.font = Font(size=10)
         merged_cell.alignment = Alignment(wrap_text=True, vertical='center', horizontal='left')
