@@ -867,6 +867,7 @@ def __add_cover_sheet__(wb, current_month_name, current_year, user, current_date
         cell.border = border_style
 
     cover_ws.merge_cells("B43:F43")
+    cover_ws.merge_cells("B44:F44")
     cover_ws.merge_cells("M43:Q43")
     labels = {
         'B43': "J = Working day In Japan",
@@ -928,7 +929,7 @@ def create_activity_excel_report(users, activities, selected_date, companyName, 
     last_day_of_month = (current_date.replace(day=1, month=current_month % 12 + 1, year=current_year) - timedelta(days=1)).day
     day_headers = [str(day) for day in range(1, last_day_of_month + 1)]
 
-    constants.EXPORT_ACTIVITY_COLUMNS += ["Cairo", "Japan", "Cairo %", "Japan %"]
+    constants.EXPORT_ACTIVITY_COLUMNS += ["Japan", "Cairo", "Japan %", "Cairo %"]
     constants.EXPORT_ACTIVITY_COLUMNS += day_headers
     addition_headers = ["Dep NAT", "Invoiced"]
     constants.EXPORT_ACTIVITY_COLUMNS += addition_headers
@@ -989,10 +990,10 @@ def create_activity_excel_report(users, activities, selected_date, companyName, 
         'grade': user.get_grade(),
         'nat_group': user.get_natGroup(),
         'invoiced': 'X',
-        'Cairo': '',
         'Japan': '',
-        'Cairo %': '',
+        'Cairo': '',
         'Japan %': '',
+        'Cairo %': '',
         'activities': defaultdict(str, default_activities.copy())
     }
         # Retrieve activities for the current user
@@ -1070,11 +1071,11 @@ def create_activity_excel_report(users, activities, selected_date, companyName, 
 
         # worked days
         red_bold_italic_font = Font(size=12, color="FF0000", bold=True, italic=True)
-        ws.cell(row=row_num, column=7 + 1, value=cairo_count).font = red_bold_italic_font
-        ws.cell(row=row_num, column=7 + 2, value=japan_count).font = red_bold_italic_font
+        ws.cell(row=row_num, column=7 + 2, value=cairo_count).font = red_bold_italic_font
+        ws.cell(row=row_num, column=7 + 1, value=japan_count).font = red_bold_italic_font
 
-        ws.cell(row=row_num, column=7 + 3, value=cairo_percentage).font = red_bold_italic_font
-        ws.cell(row=row_num, column=7 + 4, value=japan_percentage).font = red_bold_italic_font
+        ws.cell(row=row_num, column=7 + 4, value=cairo_percentage).font = red_bold_italic_font
+        ws.cell(row=row_num, column=7 + 3, value=japan_percentage).font = red_bold_italic_font
 
         for cell in ws[row_num]:
             cell.border = thin_border
