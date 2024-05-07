@@ -289,7 +289,7 @@ def set_other_borders(ws, row, columns):
 
 def __format_cell__(cell, value, size=11, italic=False, center=True):
     cell.value = value
-    cell.font = Font(size=size, italic=True)
+    cell.font = Font(size=size, italic=True, bold=True)
     if center:
         cell.alignment = Alignment(horizontal='center', vertical='center')
 
@@ -459,10 +459,10 @@ def __add_daily_activities_sheet__(wb, current_date, user, counter):
         num_merged_rows = activities_text.count('\n') + 1
 
         for col in range(6, 16):
-            bottom_cell_address = f"{get_column_letter(col)}{start_row_index + num_merged_rows - 1}"
+            bottom_cell_address = f"{get_column_letter(col)}{start_row_index}"
             daily_activities[bottom_cell_address].border = Border(bottom=Side(style='thin', color='000000'))
 
-        merged_range = f"F{start_row_index}:O{start_row_index + num_merged_rows - 1}"  # Update the range accordingly
+        merged_range = f"F{start_row_index}:O{start_row_index}"  # Update the range accordingly
         daily_activities.merge_cells(merged_range)
         merged_cell = daily_activities.cell(row=start_row_index, column=6)  # Top-left cell of the merged range
         merged_cell.value = activities_text
@@ -674,8 +674,9 @@ def __add_cover_sheet__(wb, current_month_name, current_year, user, current_date
 
     grey_fill = PatternFill(start_color='DDDDDD', end_color='DDDDDD', fill_type='solid')
     first_day_of_month = datetime(current_year, current_month, 1)
+    shift_amount = 1
     for i in range(1, 17):
-        col_address = chr(ord('A') + (i - 1))  # Alternating columns C and G
+        col_address = chr(ord('A') + (i - 1 + shift_amount))  # Alternating columns C and G
         # Set the day of the week
         day_of_week_cell = cover_ws[col_address + '24']
         day_of_week_cell.value = (first_day_of_month + timedelta(days=i - 1)).strftime("%a")
@@ -711,19 +712,19 @@ def __add_cover_sheet__(wb, current_month_name, current_year, user, current_date
 
     # Write abbreviated weekdays in row 30 for the second half of the month
     for i in range(0, calendar.monthrange(current_year, current_month)[1] - 16):
-        col_address = chr(ord('A') + i) + '27'
+        col_address = chr(ord('A') + i + shift_amount) + '27'
         day_of_week = (first_day_of_second_half + timedelta(days=i)).strftime("%a")  # Get the abbreviated day name
         cell = cover_ws[col_address]
         cell.value = day_of_week
         cell.alignment = Alignment(horizontal='center', vertical='center')
         cell.fill = grey_fill
         set_borders(cover_ws, 27, [col_address])
-        cell.border = Border(top=Side(style='thin', color='000000'), right=Side(style='thin', color='000000'))
+        cell.border = Border(top=Side(style='thin', color='000000'), right=Side(style='thin', color='000000'), left=Side(style='thin', color='000000'))
 
     # Continue writing the numeric values for the remaining days in the row below (row 30)
     for i in range(17, calendar.monthrange(current_year, current_month)[1] + 1):
         set_borders(cover_ws, 26, [col_address])
-        col_address = chr(ord('A') + (i - 17))
+        col_address = chr(ord('A') + (i - 17 + shift_amount))
         cell_address = f'{col_address}28'
         cell = cover_ws[cell_address]
         cell.value = (first_day_of_month + timedelta(days=i - 1)).day
@@ -733,7 +734,7 @@ def __add_cover_sheet__(wb, current_month_name, current_year, user, current_date
         set_borders(cover_ws, 29, [col_address])
 
     for i in range(17, calendar.monthrange(current_year, current_month)[1] + 1):
-        col_address_activity_type = chr(ord('A') + (i - 17)) + '29'
+        col_address_activity_type = chr(ord('A') + (i - 17 + shift_amount)) + '29'
 
         activity_date = datetime(current_year, current_month, 17) + timedelta(days=i - 17)
         activity_instance = Activity.objects.filter(user=user, activityDate=activity_date).first()
@@ -774,9 +775,9 @@ def __add_cover_sheet__(wb, current_month_name, current_year, user, current_date
     # Merge cells and set values for total calendar days (TCD)
     cover_ws.merge_cells('H32:K33')
     tcd_cell = cover_ws['H32']
-    tcd_cell.value = "Total Calendar Days (TCD)"
+    tcd_cell.value = "Total Calendar Days\n(TCD)"
     tcd_cell.font = Font(size=10, bold=True)
-    tcd_cell.alignment = Alignment(horizontal='center', vertical='center')
+    tcd_cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
     tcd_cell.fill = grey_fill
 
     # Set values for Japan and Cairo columns
@@ -807,7 +808,7 @@ def __add_cover_sheet__(wb, current_month_name, current_year, user, current_date
     consumption_cell = cover_ws['L32']
     consumption_cell.value = "Consumption NOD/TCD"
     consumption_cell.font = Font(size=11, bold=True)
-    consumption_cell.alignment = Alignment(horizontal='center', vertical='center')
+    consumption_cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
     consumption_cell.fill = grey_fill
 
     # # Set values for Japan and Cairo columns in consumption NOD/TCD section
