@@ -34,6 +34,8 @@ from django.utils import timezone
 import calendar
 from dashboard.jobs.jobs import generate_noce_timesheet
 from dateutil.relativedelta import relativedelta
+from rest_framework.pagination import PageNumberPagination
+
 
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     @classmethod
@@ -1210,6 +1212,7 @@ class UserViewSet(viewsets.ModelViewSet):
         return response
 
 class ActivityViewSet(viewsets.ModelViewSet):
+    pagination_class = PageNumberPagination
     permission_classes=(IsAuthenticated,)
     queryset = Activity.objects.all()
 
@@ -1289,6 +1292,12 @@ class ActivityViewSet(viewsets.ModelViewSet):
         else:
             # Filter activities for the current month and order by activityDate
             activities = Activity.objects.filter(user=user, activityDate__range=[first_day_of_month, last_day_of_month]).order_by('activityDate')
+        # Paginate the queryset
+        page = self.paginate_queryset(activities)
+        if page is not None:
+            serializer = ActivitySerializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
         serializer = ActivitySerializer(activities, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
