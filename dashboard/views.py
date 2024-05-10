@@ -1018,6 +1018,8 @@ class UserViewSet(viewsets.ModelViewSet):
         parent_parent_directory = os.path.dirname(script_directory)
         logo_path = os.path.join(parent_parent_directory, 'static', 'images', 'logo.png')
         img = Image(logo_path)
+        img.height = 1.08 * 72  # 1 inch = 72 points
+        img.width = 1.14 * 72
         ws.add_image(img, 'M2')
 
         # Set font and border for "Year:" label in cell A8
@@ -1058,10 +1060,10 @@ class UserViewSet(viewsets.ModelViewSet):
 
         ws.merge_cells(start_row=8, start_column=7, end_row=8, end_column=11)
         ws.merge_cells(start_row=9, start_column=7, end_row=9, end_column=11)
-        ws.merge_cells(start_row=12, start_column=6, end_row=12, end_column=15)
+        ws.merge_cells(start_row=12, start_column=5, end_row=12, end_column=14)
 
         for row in range(12, 13):
-            for col in range(6, 16):
+            for col in range(6, 15):
                 cell = ws.cell(row=row, column=col)
                 cell.border = name_year_month_border
 
@@ -1111,7 +1113,7 @@ class UserViewSet(viewsets.ModelViewSet):
             header_cell.border = headers_border
             header_cell.alignment = Alignment(textRotation=90, vertical='center')
 
-        cell = ws.cell(row=12, column=6, value="DAILY ACTIVITIES")
+        cell = ws.cell(row=12, column=5, value="DAILY ACTIVITIES")
         cell.font = dateFont
         cell.border = name_year_month_border
 
@@ -1146,13 +1148,13 @@ class UserViewSet(viewsets.ModelViewSet):
             # Calculate the number of merged rows for activities
             num_merged_rows = activities_text.count('\n') + 1
 
-            for col in range(6, 16):
+            for col in range(5, 14):
                 bottom_cell_address = f"{get_column_letter(col)}{start_row_index + num_merged_rows - 1}"
                 ws[bottom_cell_address].border = Border(bottom=Side(style='thin', color='000000'))
 
-            merged_range = f"F{start_row_index}:O{start_row_index + num_merged_rows - 1}"  # Update the range accordingly
+            merged_range = f"E{start_row_index}:N{start_row_index}"  # Update the range accordingly
             ws.merge_cells(merged_range)
-            merged_cell = ws.cell(row=start_row_index, column=6)  # Top-left cell of the merged range
+            merged_cell = ws.cell(row=start_row_index, column=5)  # Top-left cell of the merged range
             merged_cell.value = activities_text
             merged_cell.font = Font(size=10)
             merged_cell.alignment = Alignment(wrap_text=True, vertical='center', horizontal='left')
@@ -1173,6 +1175,23 @@ class UserViewSet(viewsets.ModelViewSet):
                 cell.value = activities_type
                 cell.alignment = Alignment(horizontal='center', vertical='center')
                 cell.font = Font(size=11)
+            
+            merged_range = f"A47:G47"
+            ws.merge_cells(merged_range)
+
+            text_to_add = "Checked by Department Head"
+            cell_to_add_text = "A47"
+
+            # Add text to the cell
+            ws[cell_to_add_text] = text_to_add
+
+            # Create a border style
+            border_bottom = Border(bottom=Side(border_style='thin'))
+
+            # Apply the border to the merged range
+            for row in ws[merged_range]:
+                for cell in row:
+                    cell.border = border_bottom
 
         # Get the current month and year
         current_month_name = date.strftime("%B")
