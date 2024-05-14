@@ -969,6 +969,9 @@ class UserViewSet(viewsets.ModelViewSet):
             for cell in row:
                 cover_ws.row_dimensions[cell.row].height = 15
 
+        for row in range(48, 50):  # Unhide rows 48 and 49
+            cover_ws.row_dimensions[row].hidden = False
+
             
     @action(detail=False, methods=['GET'], url_path=r'extract_timesheet/(?P<userId>\w+(?:-\w+)*)', serializer_class=UserTimeSheetSerializer)
     def extract_timesheet(self, request, *args, **kwargs):

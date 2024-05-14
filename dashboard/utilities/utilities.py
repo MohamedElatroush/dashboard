@@ -907,6 +907,10 @@ def __add_cover_sheet__(wb, current_month_name, current_year, user, current_date
     for row in cover_ws.iter_rows():
         for cell in row:
             cover_ws.row_dimensions[cell.row].height = 15
+        
+    for row in range(48, 50):  # Unhide rows 48 and 49
+        cover_ws.row_dimensions[row].hidden = False
+
 
 def create_activity_excel_report(users, activities, selected_date, companyName, date):
     date = datetime.combine(date, datetime.min.time())
