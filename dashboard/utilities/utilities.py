@@ -488,23 +488,6 @@ def __add_daily_activities_sheet__(wb, current_date, user, counter):
             cell.alignment = Alignment(horizontal='center', vertical='center')
             cell.font = Font(size=11)
 
-        merged_range = f"A47:G47"
-        daily_activities.merge_cells(merged_range)
-
-        text_to_add = "Checked by Department Head"
-        cell_to_add_text = "A47"
-
-        # Add text to the cell
-        daily_activities[cell_to_add_text] = text_to_add
-
-        # Create a border style
-        border_bottom = Border(bottom=Side(border_style='thin'))
-
-        # Apply the border to the merged range
-        for row in daily_activities[merged_range]:
-            for cell in row:
-                cell.border = border_bottom
-
 def __add_cover_sheet__(wb, current_month_name, current_year, user, current_date, current_month, counter):
     cover_ws = wb.create_sheet(title=str(counter))
     cover_ws.page_setup.print_scaling = 90
@@ -535,7 +518,7 @@ def __add_cover_sheet__(wb, current_month_name, current_year, user, current_date
     img.height = 1.08 * 72  # 1 inch = 72 points
     img.width = 1.14 * 72
     # Add the image to the worksheet
-    cover_ws.add_image(img, 'Q2')
+    cover_ws.add_image(img, 'O2')
 
     title_cell = cover_ws['A1']
     cover_ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=13)

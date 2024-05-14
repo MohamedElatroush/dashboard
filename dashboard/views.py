@@ -575,8 +575,8 @@ class UserViewSet(viewsets.ModelViewSet):
         img = Image(logo_path)
         img.height = 1.08 * 72  # 1 inch = 72 points
         img.width = 1.14 * 72
-        cover_ws.add_image(img, 'Q2')
-
+        cover_ws.add_image(img, 'O2')
+        cover_ws.column_dimensions['O'].width = 100  # Adjust the width as needed
 
         title_cell = cover_ws['A1']
         cover_ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=13)
@@ -1179,23 +1179,6 @@ class UserViewSet(viewsets.ModelViewSet):
                 cell.value = activities_type
                 cell.alignment = Alignment(horizontal='center', vertical='center')
                 cell.font = Font(size=11)
-            
-            merged_range = f"A47:G47"
-            ws.merge_cells(merged_range)
-
-            text_to_add = "Checked by Department Head"
-            cell_to_add_text = "A47"
-
-            # Add text to the cell
-            ws[cell_to_add_text] = text_to_add
-
-            # Create a border style
-            border_bottom = Border(bottom=Side(border_style='thin'))
-
-            # Apply the border to the merged range
-            for row in ws[merged_range]:
-                for cell in row:
-                    cell.border = border_bottom
 
         # Get the current month and year
         current_month_name = date.strftime("%B")
