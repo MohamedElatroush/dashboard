@@ -13,6 +13,7 @@ router = routers.DefaultRouter()
 router.register(r'user', UserViewSet, basename='user')
 router.register(r'activity', ActivityViewSet, basename='activity')
 router.register(r'files', LatestFileView, basename='files')
+router.register(r'department', DepartmentViewSet, basename='department')
 
 urlpatterns = [
      path('', include(router.urls)),

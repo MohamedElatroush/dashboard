@@ -1,4 +1,4 @@
-from .models import User, Activity, hrHistory
+from .models import User, Activity, hrHistory, Department
 from rest_framework.response import Response
 from rest_framework import status
 from .serializers import CreateUserSerializer,\
@@ -6,7 +6,7 @@ from .serializers import CreateUserSerializer,\
       ActivitySerializer, CreateActivitySerializer,\
     MakeUserAdminSerializer, ChangePasswordSerializer,\
     UserTimeSheetSerializer, EditUserSerializer,\
-        CalculateActivitySerializer, EditActivitySerializer
+        CalculateActivitySerializer, EditActivitySerializer, ListDepSerializer
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -68,6 +68,64 @@ class UserRegistrationViewSet(viewsets.ViewSet):
             }, status=status.HTTP_201_CREATED)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class DepartmentViewSet(viewsets.ModelViewSet):
+    queryset = Department.objects.all()
+    pagination_class = None
+
+    def get_serializer_class(self):
+        if self.action == 'create' or self.action == 'update':
+            return None  # Replace with the appropriate serializer
+        else:
+            return ListDepSerializer  # Replace with the serializer for other actions
+    
+    @action(detail=False, methods=['POST'])
+    def create_departments_from_users(self, request, *args, **kwargs):
+        users = User.objects.all()
+        created_departments = []
+
+        with transaction.atomic():
+            for user in users:
+                department_name = user.department  # Assuming department is a ForeignKey in your User model
+
+                # Skip if department_name is already None or an empty string
+                if department_name is None or department_name == '':
+                    continue
+
+                department, created = Department.objects.get_or_create(name=department_name)
+                if created:
+                    created_departments.append(department_name)
+
+            # Create 'None' department for users with no department
+            none_department, none_created = Department.objects.get_or_create(name=None)
+            if none_created:
+                created_departments.append('None')
+
+        if created_departments:
+            return Response({"message": f"Departments created: {', '.join(created_departments)}"}, status=status.HTTP_201_CREATED)
+        else:
+            return Response({"message": "No new departments created"}, status=status.HTTP_200_OK)
+    
+    @action(detail=False, methods=['POST'])
+    def update_user_departments(self, request):
+        users = User.objects.all()
+        updated_users = []
+
+        for user in users:
+            department_name = user.department
+            if department_name:
+                try:
+                    department = Department.objects.get(name=department_name)
+                    user.dep = department
+                    user.save()
+                    updated_users.append(user.username)
+                except Department.DoesNotExist:
+                    pass
+
+        if updated_users:
+            return Response({"message": f"Departments updated for users: {', '.join(updated_users)}"}, status=status.HTTP_200_OK)
+        else:
+            return Response({"message": "No user departments updated"}, status=status.HTTP_200_OK)
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()

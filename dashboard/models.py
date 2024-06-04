@@ -8,8 +8,13 @@ from django.dispatch import receiver
 from django.utils import timezone
 from datetime import datetime, timedelta
 from django.db.models.signals import pre_delete
-from storages.backends.s3boto3 import S3Boto3Storage
 
+
+class Department(TimeStampedModel):
+    name = models.CharField(max_length=256, unique=True, null=True, blank=True)
+    def __str__(self):
+        return f'{self.name}'
+    
 # Create your models here.
 class User(AbstractUser, TimeStampedModel):
     id = models.AutoField(primary_key=True)
@@ -23,6 +28,7 @@ class User(AbstractUser, TimeStampedModel):
     organizationCode = models.CharField(max_length=256, blank=True, null=True)
     position = models.CharField(max_length=256, null=True, blank=True)
     department = models.CharField(max_length=256, null=True, blank=True)
+    dep = models.ForeignKey(Department, on_delete=models.SET_NULL, null=True, blank=True)
     natGroup = models.IntegerField(choices=constants.NAT_GROUP_CHOICES, null=True, blank=True)
     workingLocation = models.CharField(max_length=256, null=True, blank=True)
     expert = models.IntegerField(choices=constants.EXPERT_LOCAL_CHOICES, null=True, blank=True)

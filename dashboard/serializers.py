@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User, Activity
+from .models import User, Activity, Department
 from .constants import constants
 from gettext import gettext as _
 from datetime import date
@@ -32,6 +32,13 @@ class ListUsersSerializer(serializers.ModelSerializer):
         return obj.get_natGroup()
     def get_company(self,obj):
         return obj.get_company()
+    
+
+class ListDepSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Department
+        fields = '__all__'
+
 
 class UserDeleteSerializer(serializers.Serializer):
     userId = serializers.IntegerField()
