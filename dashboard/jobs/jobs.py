@@ -37,7 +37,7 @@ def holidays():
             # Move to the next day
             current_day += timezone.timedelta(days=1)
 
-def generate_noce_timesheet(users=None, companyName=None, date=None):
+def generate_noce_timesheet(users=None, date=None):
     if not users:
         users = User.objects.all().exclude(isAdmin=True).order_by(F('grade').asc(nulls_last=True))
 
@@ -49,4 +49,4 @@ def generate_noce_timesheet(users=None, companyName=None, date=None):
     datetime.strptime(date_param, '%Y-%m-%d').date()
     current_date = date_param
 
-    return create_activity_excel_report(users, activities, current_date, companyName, date)
+    return create_activity_excel_report(users, activities, current_date,date)

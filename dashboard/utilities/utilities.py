@@ -860,14 +860,6 @@ def __add_cover_sheet__(wb, current_month_name, current_year, user, current_date
         cell = cover_ws[col_letter + '42']
         cell.border = Border(bottom=Side(style='thick'))
 
-    for column in range(3, 7):  # Columns 3 to 10 inclusive
-        cell = cover_ws.cell(row=41, column=column)
-        cell.border = border_style
-
-    for column in range(12, 16):  # Columns 3 to 10 inclusive
-        cell = cover_ws.cell(row=41, column=column)
-        cell.border = border_style
-
     cover_ws.merge_cells("B43:F43")
     cover_ws.merge_cells("B44:F44")
     cover_ws.merge_cells("M43:Q43")
@@ -907,12 +899,12 @@ def __add_cover_sheet__(wb, current_month_name, current_year, user, current_date
     for row in cover_ws.iter_rows():
         for cell in row:
             cover_ws.row_dimensions[cell.row].height = 15
-        
+
     for row in range(48, 50):  # Unhide rows 48 and 49
         cover_ws.row_dimensions[row].hidden = False
 
 
-def create_activity_excel_report(users, activities, selected_date, companyName, date):
+def create_activity_excel_report(users, activities, selected_date, date):
     date = datetime.combine(date, datetime.min.time())
 
     current_date = date

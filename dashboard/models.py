@@ -112,7 +112,7 @@ class Activity(TimeStampedModel):
                 'hrCode': self.user.hrCode,
                 'organizationCode': self.user.organizationCode,
                 'position': self.user.position,
-                'department': self.user.department,
+                'department': self.user.dep.name if self.user.dep else None,
                 'natGroup': str(self.user.get_natGroup()) if self.user.get_natGroup() else None,
                 'workingLocation': self.user.workingLocation,
                 'expert': str(self.user.get_expert()) if self.user.get_expert() else None,

@@ -20,6 +20,7 @@ class ListUsersSerializer(serializers.ModelSerializer):
     expert = serializers.SerializerMethodField()
     natGroup = serializers.SerializerMethodField()
     company = serializers.SerializerMethodField()
+    dep = serializers.SerializerMethodField()  # Add this field for dep
     class Meta:
         model = User
         exclude =['password']
@@ -32,6 +33,11 @@ class ListUsersSerializer(serializers.ModelSerializer):
         return obj.get_natGroup()
     def get_company(self,obj):
         return obj.get_company()
+
+    def get_dep(self, obj):
+        if obj.dep:  # Check if dep exists
+            return obj.dep.name  # Return the name of the department
+        return None  # Return None if dep is None
     
 
 class ListDepSerializer(serializers.ModelSerializer):

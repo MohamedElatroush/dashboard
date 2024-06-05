@@ -312,7 +312,7 @@ class UserViewSet(viewsets.ModelViewSet):
                 grade = row['Grade']
                 organization_code = row['Organization Code']
                 position = row['Position']
-                department = row['Department']
+                department_name = row['Department']
                 nat_group = row['NAT Group']
                 working_location = row['Working Location']
                 expert = row['Expert']
@@ -341,6 +341,9 @@ class UserViewSet(viewsets.ModelViewSet):
                     # Skip this row if the username already exists
                     continue
 
+                # Get or create department object
+                department, created = Department.objects.get_or_create(name=department_name)
+
                 # Create a new User object
                 user = User(
                     username = new_username,
@@ -352,6 +355,7 @@ class UserViewSet(viewsets.ModelViewSet):
                     organizationCode=organization_code,
                     position=position,
                     department=department,
+                    dep=department,
                     natGroup=nat_group_choice,
                     workingLocation=working_location,
                     expert=expert_choice,
@@ -979,14 +983,6 @@ class UserViewSet(viewsets.ModelViewSet):
             col_letter = chr(col_letter)
             cell = cover_ws[col_letter + '42']
             cell.border = Border(bottom=Side(style='thick'))
-        
-        for column in range(3, 7):  # Columns 3 to 10 inclusive
-            cell = cover_ws.cell(row=41, column=column)
-            cell.border = border_style
-        
-        for column in range(12, 16):  # Columns 3 to 10 inclusive
-            cell = cover_ws.cell(row=41, column=column)
-            cell.border = border_style
 
         cover_ws.merge_cells("B43:F43")
         cover_ws.merge_cells("M43:Q43")
@@ -1499,13 +1495,17 @@ class ActivityViewSet(viewsets.ModelViewSet):
         date = serializer.validated_data.get('date')
 
         company_param = request.query_params.get('company', None)
-        if company_param:
-            company_users = User.objects.filter(company=company_param)
-            return generate_noce_timesheet(users=company_users, companyName=constants.COMPANY_CHOICES[int(company_param)][1], date=date)
-        else:
-            return generate_noce_timesheet(date=date)
+        dep = request.query_params.get('department', None)
 
-        # return Response(status=status.HTTP_200_OK)
+        users = User.objects.all()
+
+        if dep:
+            users = users.filter(dep__name=dep)
+
+        if company_param:
+            users = users.filter(company=company_param)
+
+        return generate_noce_timesheet(users=users, date=date)
 
     @action(detail=False, methods=['POST'])
     def create_activity(self, request, *args, **kwargs):
