@@ -1578,6 +1578,7 @@ class ActivityViewSet(viewsets.ModelViewSet):
 
         # Get all users
         users = User.objects.all()
+        users = self.paginate_queryset(users)
 
         data = []
 
@@ -1686,12 +1687,7 @@ class ActivityViewSet(viewsets.ModelViewSet):
                     'total_days_japan': total_working_days_japan
                 })
 
-        # Paginate the queryset
-        page = self.paginate_queryset(data)
-        if page is not None:
-            return self.get_paginated_response(page)
-
-        return Response(data, status=status.HTTP_200_OK)
+        return self.get_paginated_response(data)
 
     @action(detail=False, methods=['PATCH'], url_path=r'edit_activity/(?P<activityId>\w+(?:-\w+)*)')
     def edit_activity(self, request, *args, **kwargs):
